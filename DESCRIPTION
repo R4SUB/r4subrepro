@@ -1,0 +1,30 @@
+Package: r4subrepro
+Title: Reproducibility and Reviewability Indicators for Clinical Submissions
+Version: 0.1.0
+Authors@R:
+    person("Pawan Rama", "Mali", email = "prm@outlook.in",
+           role = c("aut", "cre", "cph"),
+           comment = c(ORCID = "0000-0001-7864-5819"))
+Description: Scores the computational reproducibility and reviewer readiness of
+    an R based regulatory submission by statically inspecting its analysis code
+    folder. Checks for a captured package environment, path hygiene, a single
+    entry point, hidden setup assumptions, undeclared proprietary packages,
+    clean run evidence, and script complexity, following the reproducibility
+    guidance for making R submissions reviewable for regulators. Emits
+    standardised R4SUB (Ready for Submission) evidence table rows via
+    'r4subcore' for integration with 'r4subscore' and 'r4subprofile'.
+License: MIT + file LICENSE
+URL: https://r4sub.github.io/r4subrepro/, https://github.com/R4SUB/r4subrepro
+BugReports: https://github.com/R4SUB/r4subrepro/issues
+Depends:
+    R (>= 4.2)
+Imports:
+    cli,
+    r4subcore,
+    utils
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
