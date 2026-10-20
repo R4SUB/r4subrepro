@@ -14,6 +14,7 @@ export(assess_proprietary_pkgs)
 export(assess_reproducibility)
 export(assess_sas_r_concordance)
 export(assess_script_depth)
+export(assess_windows_reviewability)
 export(repro_config_default)
 export(reproducibility_summary)
 importFrom(cli,

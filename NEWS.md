@@ -1,3 +1,13 @@
+# r4subrepro 0.3.0
+
+- Adds `assess_windows_reviewability()` (`R-REPRO-011`), a static check for
+  non-portable constructs that can break on a Windows reviewer machine
+  (shell-outs, forking, POSIX paths). Windows is the FDA reviewer environment.
+- `assess_output_reproduction()` (`R-REPRO-008`) now records the operating
+  system the re-run happened on and warns when it is not Windows, since the
+  outputs must reproduce on the reviewer's Windows machine.
+- Reweights the indicator set to include Windows reviewability.
+
 # r4subrepro 0.2.0
 
 - Adds `assess_output_reproduction()` (`R-REPRO-008`), which re-runs a

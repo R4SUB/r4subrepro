@@ -19,6 +19,9 @@
 #'     \item{verification_patterns}{Character vector of regular expressions that
 #'       match an independent-verification artifact, such as an SAS vs R
 #'       comparison or a QC report.}
+#'     \item{windows_risk_patterns}{Named character vector of regular expressions
+#'       for non-portable constructs that can break on a Windows reviewer
+#'       machine (shell-outs, forking, POSIX paths).}
 #'     \item{adrg_names}{Character vector of patterns matching an Analysis Data
 #'       Reviewer's Guide document file name.}
 #'     \item{adrg_required_sections}{Named character vector of regular
@@ -51,6 +54,12 @@ repro_config_default <- function() {
       verification_patterns = c("qc", "verif", "validation", "concordance",
                                 "compare", "comparison", "double.?program",
                                 "sas.?r", "r.?sas"),
+      windows_risk_patterns = c(
+        system_call = "\\bsystem2?\\s*\\(",
+        fork        = "mclapply|mcmapply|mcparallel|makeForkCluster|mccollect",
+        dev_null    = "/dev/null",
+        posix_tmp   = "[\"']/tmp/"
+      ),
       adrg_names = c("adrg", "analysis.?data.?reviewer"),
       adrg_required_sections = c(
         introduction   = "introduction|purpose",
@@ -64,16 +73,17 @@ repro_config_default <- function() {
         verification   = "verification|reproduc|concordance"
       ),
       weights = list(
-        env_lockfile        = 0.15,
-        path_hygiene        = 0.15,
-        entry_point         = 0.10,
-        hidden_setup        = 0.08,
-        proprietary_pkgs    = 0.08,
-        clean_run           = 0.04,
-        script_depth        = 0.07,
-        output_reproduction = 0.14,
-        dual_verification   = 0.10,
-        adrg                = 0.09
+        env_lockfile         = 0.14,
+        path_hygiene         = 0.13,
+        entry_point          = 0.09,
+        hidden_setup         = 0.07,
+        proprietary_pkgs     = 0.07,
+        clean_run            = 0.04,
+        script_depth         = 0.06,
+        output_reproduction  = 0.13,
+        dual_verification    = 0.09,
+        adrg                 = 0.08,
+        windows_reviewability = 0.10
       )
     ),
     class = "repro_config"
