@@ -23,6 +23,10 @@ outputs an execution check should reproduce (character).}
 \item{verification_patterns}{Character vector of regular expressions that
 match an independent-verification artifact, such as an SAS vs R
 comparison or a QC report.}
+\item{adrg_names}{Character vector of patterns matching an Analysis Data
+Reviewer's Guide document file name.}
+\item{adrg_required_sections}{Named character vector of regular
+expressions for the sections an ADRG should contain.}
 \item{weights}{Named list of relative indicator weights summing to 1:
 \code{env_lockfile}, \code{path_hygiene}, \code{entry_point}, \code{hidden_setup},
 \code{proprietary_pkgs}, \code{clean_run}, \code{script_depth},

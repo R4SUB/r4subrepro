@@ -638,6 +638,182 @@ assess_sas_r_concordance <- function(r_data, sas_data, keys = NULL,
   repro_evidence(row, ctx)
 }
 
+#' Assess the Analysis Data Reviewer's Guide (ADRG)
+#'
+#' Checks that the submission includes an Analysis Data Reviewer's Guide and,
+#' when the document is a readable text format, that it covers the sections a
+#' reviewer needs: required inputs, run order, expected outputs, the R packages
+#' and versions, and the environment setup. The reproducibility guidance and
+#' real hybrid SAS/R submissions describe the ADRG as the reviewer's map to the
+#' analysis. Returns evidence with `indicator_id = "R-REPRO-010"`.
+#'
+#' Binary documents (`.pdf`, `.docx`) are recognised as present but their
+#' sections are not inspected, so they pass with a note. Use [adrg_skeleton()]
+#' to generate a Markdown ADRG draft that this check can read in full.
+#'
+#' @inheritParams assess_env_lockfile
+#' @return A validated evidence table.
+#'
+#' @examples
+#' d <- file.path(tempdir(), "sub010")
+#' dir.create(d, showWarnings = FALSE)
+#' writeLines(c("# ADRG", "## Required inputs", "## Run order",
+#'              "## Expected outputs", "## R packages", "## Environment setup"),
+#'            file.path(d, "adrg.md"))
+#' ev <- suppressMessages(assess_adrg(d))
+#' ev$result
+#'
+#' @export
+assess_adrg <- function(path, ctx = NULL, config = NULL) {
+  assert_path(path)
+  config <- resolve_config(config)
+  ctx    <- repro_resolve_ctx(ctx, path)
+  asset  <- basename(path)
+
+  present <- list.files(path, recursive = TRUE)
+  base_lc <- tolower(basename(present))
+  is_adrg <- rep(FALSE, length(present))
+  for (pat in config$adrg_names) is_adrg <- is_adrg | grepl(pat, base_lc, perl = TRUE)
+  docs <- present[is_adrg]
+
+  if (length(docs) == 0L) {
+    row <- repro_row("R-REPRO-010", "Analysis Data Reviewer's Guide", asset,
+                     "fail", "medium",
+                     "No ADRG (Analysis Data Reviewer's Guide) document found",
+                     metric_value = 0, metric_unit = "sections", location = path)
+    return(repro_evidence(row, ctx))
+  }
+
+  doc <- docs[1L]
+  ext <- tolower(tools::file_ext(doc))
+  text_ext <- c("md", "markdown", "txt", "rmd", "rtf", "tex", "org")
+
+  if (!ext %in% text_ext) {
+    row <- repro_row("R-REPRO-010", "Analysis Data Reviewer's Guide", asset,
+                     "pass", "info",
+                     paste0("ADRG present (", basename(doc),
+                            "); binary format not inspected for sections"),
+                     metric_value = NA_real_, metric_unit = "sections",
+                     location = doc)
+    return(repro_evidence(row, ctx))
+  }
+
+  text <- tolower(paste(read_lines_safe(file.path(path, doc)), collapse = "\n"))
+  req  <- config$adrg_required_sections
+  found <- vapply(req, function(p) grepl(p, text, perl = TRUE), logical(1))
+  rate  <- mean(found)
+
+  if (all(found)) {
+    row <- repro_row("R-REPRO-010", "Analysis Data Reviewer's Guide", asset,
+                     "pass", "info",
+                     paste0("ADRG present and covers all ", length(req),
+                            " required sections (", basename(doc), ")"),
+                     metric_value = rate, metric_unit = "sections", location = doc)
+  } else {
+    missing <- names(req)[!found]
+    row <- repro_row("R-REPRO-010", "Analysis Data Reviewer's Guide", asset,
+                     "warn", "medium",
+                     paste0("ADRG present but missing section(s): ",
+                            paste(missing, collapse = ", ")),
+                     metric_value = rate, metric_unit = "sections", location = doc)
+  }
+  repro_evidence(row, ctx)
+}
+
+#' Generate an ADRG Draft
+#'
+#' Writes a Markdown Analysis Data Reviewer's Guide skeleton for a submission
+#' folder, pre-filled by inspecting the folder: the detected entry point, the
+#' data inputs the scripts read, and the R packages they use (with versions from
+#' a lockfile when present). The draft contains the sections [assess_adrg()]
+#' looks for, ready for the sponsor to complete.
+#'
+#' @param path Path to the submission's analysis code folder.
+#' @param out Output file. When `NULL`, writes `ADRG.md` inside `path`.
+#' @param config A configuration from [repro_config_default()].
+#' @return The path to the written file, invisibly.
+#'
+#' @examples
+#' d <- file.path(tempdir(), "sub_adrg")
+#' dir.create(d, showWarnings = FALSE)
+#' writeLines("x <- read.csv('data/adsl.csv')", file.path(d, "run.R"))
+#' f <- adrg_skeleton(d)
+#' file.exists(f)
+#'
+#' @export
+adrg_skeleton <- function(path = ".", out = NULL, config = NULL) {
+  assert_path(path)
+  config <- resolve_config(config)
+  if (is.null(out)) out <- file.path(path, "ADRG.md")
+
+  files <- list_r_files(path)
+  text  <- unlist(lapply(files, read_lines_safe))
+
+  present <- list.files(path, recursive = TRUE)
+  entries <- present[tolower(basename(present)) %in% tolower(config$entry_point_names)]
+  entry   <- if (length(entries)) entries[1L] else "(none detected; add your run script)"
+
+  raw <- unlist(regmatches(
+    text,
+    gregexpr("(?:read\\.csv|read_csv|read_sas|read_xpt|read\\.table|readRDS)\\(\\s*[\"'][^\"']+[\"']",
+             text, perl = TRUE)
+  ))
+  inputs <- sub("[\"']$", "", sub("^[^\"']+[\"']", "", raw))
+  inputs <- unique(inputs[nzchar(inputs)])
+
+  pkgs <- extract_packages(text)
+  pkgs <- setdiff(pkgs, c("base", "stats", "utils", "methods", "graphics"))
+  versions <- declared_package_versions(path)
+
+  pkg_lines <- if (length(pkgs)) {
+    vapply(sort(pkgs), function(p) {
+      v <- versions[[p]]
+      if (is.null(v)) paste0("- ", p) else paste0("- ", p, " (", v, ")")
+    }, character(1))
+  } else {
+    "- (no packages detected)"
+  }
+
+  input_lines <- if (length(inputs)) paste0("- ", inputs) else
+    "- (no data inputs detected; list the datasets the analysis reads)"
+
+  lines <- c(
+    "# Analysis Data Reviewer's Guide (ADRG)",
+    "",
+    "Draft generated by r4subrepro. Review and complete every section before submission.",
+    "",
+    "## Purpose",
+    "Describe the analyses this submission reproduces and the role of R.",
+    "",
+    "## Required inputs",
+    input_lines,
+    "",
+    "## Run order",
+    paste0("Entry point: `", entry, "`"),
+    "Document the order in which scripts run and any dependencies between them.",
+    "",
+    "## Expected outputs (tables, figures, listings)",
+    "List the tables, figures, and listings produced, and where they are written.",
+    "",
+    "## Software and R packages",
+    "R version used:",
+    pkg_lines,
+    "",
+    "## R environment setup",
+    "How a reviewer recreates the environment on a standard Windows system:",
+    "- Install the packages listed above (a single package list file plus a lockfile is recommended).",
+    "- Restore the locked versions (for example with renv.lock).",
+    "- Configure data paths relative to the project root.",
+    "",
+    "## Verification",
+    "Describe how the R results were independently verified (for example an SAS vs R comparison).",
+    ""
+  )
+  writeLines(lines, out)
+  cli::cli_alert_success("Wrote ADRG draft to {.path {out}}")
+  invisible(out)
+}
+
 #' Assess Reproducibility of a Submission Folder
 #'
 #' Runs the static reproducibility indicators over a submission's analysis code
@@ -654,8 +830,8 @@ assess_sas_r_concordance <- function(r_data, sas_data, keys = NULL,
 #'   default so the scan stays static and never runs submission code unasked.
 #'
 #' @return A validated, combined evidence table for indicators `R-REPRO-001`
-#'   through `R-REPRO-007` and `R-REPRO-009`, plus `R-REPRO-008` when
-#'   `include_execution = TRUE`.
+#'   through `R-REPRO-007`, `R-REPRO-009`, and `R-REPRO-010`, plus `R-REPRO-008`
+#'   when `include_execution = TRUE`.
 #'
 #' @examples
 #' d <- file.path(tempdir(), "sub_all")
@@ -682,7 +858,8 @@ assess_reproducibility <- function(path, ctx = NULL,
     assess_proprietary_pkgs(path, ctx, config),
     assess_clean_run_evidence(path, ctx, config),
     assess_script_depth(path, ctx, config),
-    assess_dual_verification(path, ctx, config)
+    assess_dual_verification(path, ctx, config),
+    assess_adrg(path, ctx, config)
   )
   if (isTRUE(include_execution)) {
     parts <- c(parts, list(assess_output_reproduction(path, ctx = ctx, config = config)))

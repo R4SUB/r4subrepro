@@ -12,6 +12,11 @@
   versus R comparison or a QC report, and `assess_sas_r_concordance()`, which
   compares two result tables cell by cell within a tolerance. The static check
   is included in `assess_reproducibility()`.
+- Adds `assess_adrg()` (`R-REPRO-010`), which checks that the submission
+  includes an Analysis Data Reviewer's Guide covering the required inputs, run
+  order, expected outputs, R packages, and environment setup, and
+  `adrg_skeleton()`, which generates a Markdown ADRG draft by inspecting the
+  folder. The check is included in `assess_reproducibility()`.
 - Reweights the indicator set to accommodate the new reproducibility,
   verification, and reviewer-guide indicators.
 

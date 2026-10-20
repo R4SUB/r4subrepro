@@ -28,6 +28,21 @@ make_good_submission <- function() {
 
   writeLines(c("R version 4.5.1", "attached packages: dplyr"),
              file.path(d, "sessionInfo.txt"))
+
+  # Independent verification evidence (R-REPRO-009).
+  writeLines("SAS vs R comparison: all values match",
+             file.path(d, "qc_compare_sas_r.rtf"))
+
+  # A complete ADRG covering the required sections (R-REPRO-010).
+  writeLines(c(
+    "# Analysis Data Reviewer's Guide",
+    "## Required inputs", "adsl.csv",
+    "## Run order", "run.R then analysis.R",
+    "## Expected outputs", "tables and figures",
+    "## Software and R packages", "dplyr; R version 4.5.1",
+    "## R environment setup", "renv restore"
+  ), file.path(d, "adrg.md"))
+
   d
 }
 

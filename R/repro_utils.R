@@ -200,3 +200,27 @@ declared_packages <- function(path) {
   }
   unique(declared)
 }
+
+# Package versions declared in an renv.lock, as a named list pkg -> version.
+# Light line parser so no JSON dependency is needed; handles the common
+# "Package" then "Version" layout renv writes.
+declared_package_versions <- function(path) {
+  res <- list()
+  lock <- file.path(path, "renv.lock")
+  if (!file.exists(lock)) return(res)
+  txt <- read_lines_safe(lock)
+  cur <- NA_character_
+  for (ln in txt) {
+    mp <- regmatches(ln, regexpr("\"Package\"\\s*:\\s*\"[^\"]+\"", ln))
+    if (length(mp)) {
+      cur <- sub("\"$", "", sub(".*:\\s*\"", "", mp))
+      next
+    }
+    mv <- regmatches(ln, regexpr("\"Version\"\\s*:\\s*\"[^\"]+\"", ln))
+    if (length(mv) && !is.na(cur)) {
+      res[[cur]] <- sub("\"$", "", sub(".*:\\s*\"", "", mv))
+      cur <- NA_character_
+    }
+  }
+  res
+}

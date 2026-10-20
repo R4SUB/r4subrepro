@@ -19,6 +19,10 @@
 #'     \item{verification_patterns}{Character vector of regular expressions that
 #'       match an independent-verification artifact, such as an SAS vs R
 #'       comparison or a QC report.}
+#'     \item{adrg_names}{Character vector of patterns matching an Analysis Data
+#'       Reviewer's Guide document file name.}
+#'     \item{adrg_required_sections}{Named character vector of regular
+#'       expressions for the sections an ADRG should contain.}
 #'     \item{weights}{Named list of relative indicator weights summing to 1:
 #'       `env_lockfile`, `path_hygiene`, `entry_point`, `hidden_setup`,
 #'       `proprietary_pkgs`, `clean_run`, `script_depth`,
@@ -47,6 +51,14 @@ repro_config_default <- function() {
       verification_patterns = c("qc", "verif", "validation", "concordance",
                                 "compare", "comparison", "double.?program",
                                 "sas.?r", "r.?sas"),
+      adrg_names = c("adrg", "analysis.?data.?reviewer"),
+      adrg_required_sections = c(
+        inputs      = "input",
+        run_order   = "run.?order",
+        outputs     = "output|table|figure|listing",
+        packages    = "package|r version|session",
+        environment = "environment|renv|setup|install"
+      ),
       weights = list(
         env_lockfile        = 0.15,
         path_hygiene        = 0.15,
