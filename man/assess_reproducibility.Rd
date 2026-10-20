@@ -25,7 +25,8 @@ default so the scan stays static and never runs submission code unasked.}
 }
 \value{
 A validated, combined evidence table for indicators \code{R-REPRO-001}
-through \code{R-REPRO-007}, plus \code{R-REPRO-008} when \code{include_execution = TRUE}.
+through \code{R-REPRO-007} and \code{R-REPRO-009}, plus \code{R-REPRO-008} when
+\code{include_execution = TRUE}.
 }
 \description{
 Runs the static reproducibility indicators over a submission's analysis code

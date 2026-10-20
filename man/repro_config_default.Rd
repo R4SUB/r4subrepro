@@ -20,6 +20,9 @@ match a clean run log or \code{sessionInfo()} capture.}
 \item{expected_output_dir}{Name of the subfolder that holds the submitted
 outputs an execution check should reproduce (character).}
 \item{run_timeout}{Maximum seconds to allow a reproduction run (integer).}
+\item{verification_patterns}{Character vector of regular expressions that
+match an independent-verification artifact, such as an SAS vs R
+comparison or a QC report.}
 \item{weights}{Named list of relative indicator weights summing to 1:
 \code{env_lockfile}, \code{path_hygiene}, \code{entry_point}, \code{hidden_setup},
 \code{proprietary_pkgs}, \code{clean_run}, \code{script_depth},

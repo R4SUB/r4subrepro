@@ -88,13 +88,14 @@ test_that("all evidence rows use the usability domain and r4subrepro source", {
   ev <- suppressMessages(assess_reproducibility(good))
   expect_true(all(ev$indicator_domain == "usability"))
   expect_true(all(ev$source_name == "r4subrepro"))
-  expect_setequal(ev$indicator_id, paste0("R-REPRO-00", 1:7))
+  expect_setequal(ev$indicator_id,
+                  c(paste0("R-REPRO-00", 1:7), "R-REPRO-009"))
 })
 
-test_that("assess_reproducibility binds seven indicators", {
+test_that("assess_reproducibility binds the static indicators", {
   good <- make_good_submission()
   ev <- suppressMessages(assess_reproducibility(good))
-  expect_equal(nrow(ev), 7L)
+  expect_equal(nrow(ev), 8L)
   expect_s3_class(ev, "data.frame")
 })
 
