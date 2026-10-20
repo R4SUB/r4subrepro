@@ -2,6 +2,7 @@
 
 adrg_sections <- function() {
   c("# Analysis Data Reviewer's Guide",
+    "## Executive Summary", "overview of the programs",
     "## 1. Introduction", "### 1.1 Purpose",
     "### 1.2 Study Data Standards and Dictionary Inventory", "define.xml",
     "## 5. Analysis Dataset Descriptions", "ADSL",
@@ -10,6 +11,7 @@ adrg_sections <- function() {
     "### 7.5 Open-source R Analysis Packages", "dplyr",
     "## 8. Directory Structure", "eCTD module 5",
     "## 9. Reproducibility and Verification", "SAS vs R",
+    "## Troubleshooting", "common errors",
     "## Appendix: Instructions to Execute Analysis Programs in R", "install R")
 }
 
@@ -60,6 +62,19 @@ test_that("adrg_skeleton: writes a draft that assess_adrg accepts", {
   expect_true(file.exists(f))
   e <- suppressMessages(assess_adrg(d))
   expect_equal(e$result, "pass")
+})
+
+test_that("adrg_skeleton: includes executive summary, troubleshooting, analysis type", {
+  d <- file.path(tempdir(), paste0("adrg_sections_", as.integer(runif(1, 1, 1e6))))
+  dir.create(d, showWarnings = FALSE)
+  writeLines(c("library(dplyr)", "adsl <- read.csv('data/adsl.csv')"),
+             file.path(d, "run.R"))
+  suppressMessages(adrg_skeleton(d))
+  txt <- tolower(paste(readLines(file.path(d, "ADRG.md")), collapse = "\n"))
+  expect_true(grepl("executive summary", txt))
+  expect_true(grepl("troubleshooting", txt))
+  expect_true(grepl("analysis type", txt))
+  expect_true(grepl("primary/secondary", txt))
 })
 
 test_that("adrg_skeleton: records detected inputs and packages", {
