@@ -17,9 +17,13 @@ single obvious entry point.}
 count as a captured package environment.}
 \item{run_evidence_patterns}{Character vector of regular expressions that
 match a clean run log or \code{sessionInfo()} capture.}
+\item{expected_output_dir}{Name of the subfolder that holds the submitted
+outputs an execution check should reproduce (character).}
+\item{run_timeout}{Maximum seconds to allow a reproduction run (integer).}
 \item{weights}{Named list of relative indicator weights summing to 1:
 \code{env_lockfile}, \code{path_hygiene}, \code{entry_point}, \code{hidden_setup},
-\code{proprietary_pkgs}, \code{clean_run}, \code{script_depth}.}
+\code{proprietary_pkgs}, \code{clean_run}, \code{script_depth},
+\code{output_reproduction}, \code{dual_verification}, \code{adrg}.}
 }
 }
 \description{

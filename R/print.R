@@ -6,7 +6,8 @@ repro_indicator_weight <- function(ids, config) {
            "R-REPRO-004" = "hidden_setup",
            "R-REPRO-005" = "proprietary_pkgs",
            "R-REPRO-006" = "clean_run",
-           "R-REPRO-007" = "script_depth")
+           "R-REPRO-007" = "script_depth",
+           "R-REPRO-008" = "output_reproduction")
   vapply(ids, function(id) {
     key <- unname(map[id])
     if (is.na(key)) return(0)

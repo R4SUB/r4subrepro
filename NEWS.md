@@ -1,3 +1,15 @@
+# r4subrepro 0.2.0
+
+- Adds `assess_output_reproduction()` (`R-REPRO-008`), which re-runs a
+  submission's entry point in a fresh, sandboxed R session and checks that the
+  outputs match the submitted outputs byte for byte. Execution is opt-in and
+  never touches the submission folder; without `run = TRUE` the indicator
+  returns `na`.
+- `assess_reproducibility()` gains `include_execution` to append the
+  output-reproduction check.
+- Reweights the indicator set to accommodate the new reproducibility,
+  verification, and reviewer-guide indicators.
+
 # r4subrepro 0.1.0
 
 - Initial release.

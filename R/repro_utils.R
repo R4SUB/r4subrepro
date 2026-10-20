@@ -43,6 +43,16 @@ read_lines_safe <- function(f) {
            error = function(e) character(0))
 }
 
+# Hash every file under a directory, returning a character vector of MD5 sums
+# named by path relative to that directory. Empty when the directory is absent.
+hash_dir <- function(dir) {
+  if (!dir.exists(dir)) return(stats::setNames(character(0), character(0)))
+  files <- list.files(dir, recursive = TRUE, all.files = TRUE, no.. = TRUE)
+  if (length(files) == 0L) return(stats::setNames(character(0), character(0)))
+  full <- file.path(dir, files)
+  stats::setNames(as.character(tools::md5sum(full)), files)
+}
+
 # Build a single evidence row as a plain data.frame in schema column order.
 repro_row <- function(indicator_id, indicator_name, asset_id, result, severity,
                       message, metric_value = NA_real_, metric_unit = NA_character_,

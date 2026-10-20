@@ -4,7 +4,12 @@
 \alias{assess_reproducibility}
 \title{Assess Reproducibility of a Submission Folder}
 \usage{
-assess_reproducibility(path, ctx = NULL, config = repro_config_default())
+assess_reproducibility(
+  path,
+  ctx = NULL,
+  config = repro_config_default(),
+  include_execution = FALSE
+)
 }
 \arguments{
 \item{path}{Path to the submission's analysis code folder.}
@@ -13,13 +18,17 @@ assess_reproducibility(path, ctx = NULL, config = repro_config_default())
 default context is created from the folder name.}
 
 \item{config}{A configuration from \code{\link[=repro_config_default]{repro_config_default()}}.}
+
+\item{include_execution}{When \code{TRUE}, also runs \code{\link[=assess_output_reproduction]{assess_output_reproduction()}}
+(\code{R-REPRO-008}), which executes the submission's entry point. Off by
+default so the scan stays static and never runs submission code unasked.}
 }
 \value{
 A validated, combined evidence table for indicators \code{R-REPRO-001}
-through \code{R-REPRO-007}.
+through \code{R-REPRO-007}, plus \code{R-REPRO-008} when \code{include_execution = TRUE}.
 }
 \description{
-Runs all seven reproducibility indicators over a submission's analysis code
+Runs the static reproducibility indicators over a submission's analysis code
 folder and returns the combined R4SUB evidence table. The rows carry
 \code{indicator_domain = "usability"}, so they flow directly into the Submission
 Confidence Index alongside the other reviewer-experience indicators.
