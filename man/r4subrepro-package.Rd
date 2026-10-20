@@ -20,5 +20,10 @@ Useful links:
 \author{
 \strong{Maintainer}: Pawan Rama Mali \email{prm@outlook.in} (\href{https://orcid.org/0000-0001-7864-5819}{ORCID}) [copyright holder]
 
+Authors:
+\itemize{
+  \item Pawan Rama Mali \email{prm@outlook.in} (\href{https://orcid.org/0000-0001-7864-5819}{ORCID}) [copyright holder]
+}
+
 }
 \keyword{internal}

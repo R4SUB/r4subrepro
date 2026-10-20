@@ -360,9 +360,144 @@ assess_script_depth <- function(path, ctx = NULL, config = NULL) {
   repro_evidence(row, ctx)
 }
 
+#' Assess Output Reproduction
+#'
+#' Re-runs the submission's entry point in a fresh R session and checks that the
+#' outputs it produces match the submitted outputs byte for byte. This is the
+#' executable counterpart to [assess_clean_run_evidence()], which only checks
+#' that a run log is present. Returns evidence with
+#' `indicator_id = "R-REPRO-008"`.
+#'
+#' Execution is opt-in and sandboxed. The folder is copied to a temporary
+#' location and the entry point runs in a separate R session (via 'callr') with
+#' a timeout, so nothing in the submission folder is modified. The submitted
+#' outputs under `expected` are hashed from the original folder and compared to
+#' the files the re-run produces in the copy. When `run = FALSE`, or 'callr' is
+#' not installed, no code runs and the indicator returns `na`, which keeps the
+#' check safe offline and on CRAN.
+#'
+#' @inheritParams assess_env_lockfile
+#' @param expected Name of the subfolder, relative to `path`, holding the
+#'   submitted outputs to reproduce. Defaults to `config$expected_output_dir`.
+#' @param entry Entry point script to run, relative to `path`. When `NULL` the
+#'   first file matching `config$entry_point_names` is used.
+#' @param run Whether to execute the entry point. When `NULL` (default),
+#'   execution happens only in an interactive session with 'callr' installed, so
+#'   examples, tests, and CRAN do not run submission code unless asked.
+#' @param timeout Maximum seconds to allow the run. Defaults to
+#'   `config$run_timeout`.
+#' @return A validated evidence table.
+#'
+#' @examples
+#' d <- file.path(tempdir(), "sub008")
+#' dir.create(file.path(d, "outputs"), recursive = TRUE, showWarnings = FALSE)
+#' writeLines("writeLines('1', 'outputs/res.txt')", file.path(d, "run.R"))
+#' writeLines("1", file.path(d, "outputs", "res.txt"))
+#' ev <- suppressMessages(assess_output_reproduction(d, run = FALSE))
+#' ev$result
+#' \donttest{
+#' if (requireNamespace("callr", quietly = TRUE)) {
+#'   ev2 <- suppressMessages(assess_output_reproduction(d, run = TRUE))
+#'   ev2$result
+#' }
+#' }
+#'
+#' @export
+assess_output_reproduction <- function(path, expected = NULL, entry = NULL,
+                                       ctx = NULL, config = NULL,
+                                       run = NULL, timeout = NULL) {
+  assert_path(path)
+  config <- resolve_config(config)
+  ctx    <- repro_resolve_ctx(ctx, path)
+  asset  <- basename(path)
+  if (is.null(expected)) expected <- config$expected_output_dir
+  if (is.null(timeout))  timeout  <- config$run_timeout
+
+  have_callr <- requireNamespace("callr", quietly = TRUE)
+  if (is.null(run)) run <- interactive() && have_callr
+  if (isTRUE(run) && !have_callr) run <- FALSE
+
+  if (!isTRUE(run)) {
+    row <- repro_row("R-REPRO-008", "Output Reproduction", asset, "na", "info",
+                     "Execution not attempted; output reproduction not verified (set run = TRUE with 'callr' installed)",
+                     metric_value = NA_real_, metric_unit = "match_rate",
+                     location = path)
+    return(repro_evidence(row, ctx))
+  }
+
+  if (is.null(entry)) {
+    present <- list.files(path, recursive = TRUE)
+    hits <- present[tolower(basename(present)) %in% tolower(config$entry_point_names)]
+    entry <- if (length(hits)) hits[1L] else NA_character_
+  }
+  if (is.na(entry) || !nzchar(entry)) {
+    row <- repro_row("R-REPRO-008", "Output Reproduction", asset, "fail", "high",
+                     "No entry point script found to execute",
+                     metric_value = 0, metric_unit = "match_rate", location = path)
+    return(repro_evidence(row, ctx))
+  }
+
+  expected_hashes <- hash_dir(file.path(path, expected))
+
+  run_dir <- tempfile("r4subrepro_run_")
+  dir.create(run_dir)
+  on.exit(unlink(run_dir, recursive = TRUE, force = TRUE), add = TRUE)
+  items <- list.files(path, all.files = TRUE, no.. = TRUE, full.names = TRUE)
+  file.copy(items, run_dir, recursive = TRUE)
+
+  entry_abs <- file.path(run_dir, entry)
+  err <- tryCatch({
+    callr::rscript(entry_abs, wd = run_dir, show = FALSE, timeout = timeout,
+                   fail_on_status = TRUE)
+    NA_character_
+  }, error = function(e) conditionMessage(e))
+
+  if (!is.na(err)) {
+    row <- repro_row("R-REPRO-008", "Output Reproduction", asset, "fail", "high",
+                     paste0("Entry point '", entry, "' errored or timed out: ",
+                            substr(err, 1L, 160L)),
+                     metric_value = 0, metric_unit = "match_rate", location = entry)
+    return(repro_evidence(row, ctx))
+  }
+
+  if (length(expected_hashes) == 0L) {
+    row <- repro_row("R-REPRO-008", "Output Reproduction", asset, "warn", "low",
+                     paste0("Entry point ran clean but no submitted outputs in '",
+                            expected, "' to compare against"),
+                     metric_value = NA_real_, metric_unit = "match_rate",
+                     location = file.path(path, expected))
+    return(repro_evidence(row, ctx))
+  }
+
+  produced_hashes <- hash_dir(file.path(run_dir, expected))
+  exp_rel <- names(expected_hashes)
+  reproduced <- vapply(exp_rel, function(f) {
+    i <- match(f, names(produced_hashes))
+    !is.na(i) && identical(unname(produced_hashes[i]), unname(expected_hashes[[f]]))
+  }, logical(1))
+
+  rate <- mean(reproduced)
+  if (all(reproduced)) {
+    row <- repro_row("R-REPRO-008", "Output Reproduction", asset, "pass", "info",
+                     paste0("All ", length(reproduced), " submitted output(s) reproduced exactly"),
+                     metric_value = rate, metric_unit = "match_rate",
+                     location = file.path(path, expected))
+  } else {
+    bad   <- exp_rel[!reproduced]
+    shown <- paste(utils::head(bad, 5L), collapse = ", ")
+    more  <- if (length(bad) > 5L) paste0(" (+", length(bad) - 5L, " more)") else ""
+    row <- repro_row("R-REPRO-008", "Output Reproduction", asset, "fail", "high",
+                     paste0(length(bad), " of ", length(reproduced),
+                            " output(s) did not reproduce: ", shown, more),
+                     metric_value = rate, metric_unit = "match_rate",
+                     location = shown)
+  }
+  repro_evidence(row, ctx)
+}
+
 #' Assess Reproducibility of a Submission Folder
 #'
-#' Runs all seven reproducibility indicators over a submission's analysis code
+#' Runs the static reproducibility indicators over a submission's analysis code
 #' folder and returns the combined R4SUB evidence table. The rows carry
 #' `indicator_domain = "usability"`, so they flow directly into the Submission
 #' Confidence Index alongside the other reviewer-experience indicators.
@@ -371,9 +506,12 @@ assess_script_depth <- function(path, ctx = NULL, config = NULL) {
 #' @param ctx A run context from [r4subcore::r4sub_run_context()]. When `NULL` a
 #'   default context is created from the folder name.
 #' @param config A configuration from [repro_config_default()].
+#' @param include_execution When `TRUE`, also runs [assess_output_reproduction()]
+#'   (`R-REPRO-008`), which executes the submission's entry point. Off by
+#'   default so the scan stays static and never runs submission code unasked.
 #'
 #' @return A validated, combined evidence table for indicators `R-REPRO-001`
-#'   through `R-REPRO-007`.
+#'   through `R-REPRO-007`, plus `R-REPRO-008` when `include_execution = TRUE`.
 #'
 #' @examples
 #' d <- file.path(tempdir(), "sub_all")
@@ -386,7 +524,8 @@ assess_script_depth <- function(path, ctx = NULL, config = NULL) {
 #'
 #' @export
 assess_reproducibility <- function(path, ctx = NULL,
-                                   config = repro_config_default()) {
+                                   config = repro_config_default(),
+                                   include_execution = FALSE) {
   assert_path(path)
   config <- resolve_config(config)
   ctx    <- repro_resolve_ctx(ctx, path)
@@ -400,5 +539,8 @@ assess_reproducibility <- function(path, ctx = NULL,
     assess_clean_run_evidence(path, ctx, config),
     assess_script_depth(path, ctx, config)
   )
+  if (isTRUE(include_execution)) {
+    parts <- c(parts, list(assess_output_reproduction(path, ctx = ctx, config = config)))
+  }
   do.call(r4subcore::bind_evidence, parts)
 }

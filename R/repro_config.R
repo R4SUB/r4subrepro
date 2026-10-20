@@ -13,9 +13,13 @@
 #'       count as a captured package environment.}
 #'     \item{run_evidence_patterns}{Character vector of regular expressions that
 #'       match a clean run log or `sessionInfo()` capture.}
+#'     \item{expected_output_dir}{Name of the subfolder that holds the submitted
+#'       outputs an execution check should reproduce (character).}
+#'     \item{run_timeout}{Maximum seconds to allow a reproduction run (integer).}
 #'     \item{weights}{Named list of relative indicator weights summing to 1:
 #'       `env_lockfile`, `path_hygiene`, `entry_point`, `hidden_setup`,
-#'       `proprietary_pkgs`, `clean_run`, `script_depth`.}
+#'       `proprietary_pkgs`, `clean_run`, `script_depth`,
+#'       `output_reproduction`, `dual_verification`, `adrg`.}
 #'   }
 #'
 #' @examples
@@ -35,14 +39,19 @@ repro_config_default <- function() {
       run_evidence_patterns = c("sessioninfo.*\\.txt$", "\\.log$",
                                 "reproduce.*\\.(txt|md|log)$",
                                 "runlog.*\\.(txt|log)$"),
+      expected_output_dir = "outputs",
+      run_timeout         = 600L,
       weights = list(
-        env_lockfile     = 0.25,
-        path_hygiene     = 0.25,
-        entry_point      = 0.15,
-        hidden_setup     = 0.10,
-        proprietary_pkgs = 0.10,
-        clean_run        = 0.05,
-        script_depth     = 0.10
+        env_lockfile        = 0.15,
+        path_hygiene        = 0.15,
+        entry_point         = 0.10,
+        hidden_setup        = 0.08,
+        proprietary_pkgs    = 0.08,
+        clean_run           = 0.04,
+        script_depth        = 0.07,
+        output_reproduction = 0.14,
+        dual_verification   = 0.10,
+        adrg                = 0.09
       )
     ),
     class = "repro_config"
