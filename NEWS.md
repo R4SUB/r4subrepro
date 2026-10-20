@@ -12,6 +12,16 @@
   versus R comparison or a QC report, and `assess_sas_r_concordance()`, which
   compares two result tables cell by cell within a tolerance. The static check
   is included in `assess_reproducibility()`.
+- Adds `assess_adrg()` (`R-REPRO-010`), which checks that the submission
+  includes an Analysis Data Reviewer's Guide covering the required inputs, run
+  order, expected outputs, R packages, and environment setup, and
+  `adrg_skeleton()`, which generates a draft in the standard PHUSE / R
+  Consortium ADRG structure (sections 1 to 8 plus an R execution appendix),
+  auto-filling the analysis datasets, the analysis output programs and a
+  program-to-output traceability table, the proprietary and open-source R
+  package split with versions, and the execution steps, and adding a
+  Reproducibility and Verification section the base template omits. The check
+  is included in `assess_reproducibility()`.
 - Reweights the indicator set to accommodate the new reproducibility,
   verification, and reviewer-guide indicators.
 

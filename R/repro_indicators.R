@@ -638,6 +638,256 @@ assess_sas_r_concordance <- function(r_data, sas_data, keys = NULL,
   repro_evidence(row, ctx)
 }
 
+#' Assess the Analysis Data Reviewer's Guide (ADRG)
+#'
+#' Checks that the submission includes an Analysis Data Reviewer's Guide and,
+#' when the document is a readable text format, that it covers the sections a
+#' reviewer needs: required inputs, run order, expected outputs, the R packages
+#' and versions, and the environment setup. The reproducibility guidance and
+#' real hybrid SAS/R submissions describe the ADRG as the reviewer's map to the
+#' analysis. Returns evidence with `indicator_id = "R-REPRO-010"`.
+#'
+#' Binary documents (`.pdf`, `.docx`) are recognised as present but their
+#' sections are not inspected, so they pass with a note. Use [adrg_skeleton()]
+#' to generate a Markdown ADRG draft that this check can read in full.
+#'
+#' @inheritParams assess_env_lockfile
+#' @return A validated evidence table.
+#'
+#' @examples
+#' d <- file.path(tempdir(), "sub010")
+#' dir.create(d, showWarnings = FALSE)
+#' suppressMessages(adrg_skeleton(d))
+#' ev <- suppressMessages(assess_adrg(d))
+#' ev$result
+#'
+#' @export
+assess_adrg <- function(path, ctx = NULL, config = NULL) {
+  assert_path(path)
+  config <- resolve_config(config)
+  ctx    <- repro_resolve_ctx(ctx, path)
+  asset  <- basename(path)
+
+  present <- list.files(path, recursive = TRUE)
+  base_lc <- tolower(basename(present))
+  is_adrg <- rep(FALSE, length(present))
+  for (pat in config$adrg_names) is_adrg <- is_adrg | grepl(pat, base_lc, perl = TRUE)
+  docs <- present[is_adrg]
+
+  if (length(docs) == 0L) {
+    row <- repro_row("R-REPRO-010", "Analysis Data Reviewer's Guide", asset,
+                     "fail", "medium",
+                     "No ADRG (Analysis Data Reviewer's Guide) document found",
+                     metric_value = 0, metric_unit = "sections", location = path)
+    return(repro_evidence(row, ctx))
+  }
+
+  doc <- docs[1L]
+  ext <- tolower(tools::file_ext(doc))
+  text_ext <- c("md", "markdown", "txt", "rmd", "rtf", "tex", "org")
+
+  if (!ext %in% text_ext) {
+    row <- repro_row("R-REPRO-010", "Analysis Data Reviewer's Guide", asset,
+                     "pass", "info",
+                     paste0("ADRG present (", basename(doc),
+                            "); binary format not inspected for sections"),
+                     metric_value = NA_real_, metric_unit = "sections",
+                     location = doc)
+    return(repro_evidence(row, ctx))
+  }
+
+  text <- tolower(paste(read_lines_safe(file.path(path, doc)), collapse = "\n"))
+  req  <- config$adrg_required_sections
+  found <- vapply(req, function(p) grepl(p, text, perl = TRUE), logical(1))
+  rate  <- mean(found)
+
+  if (all(found)) {
+    row <- repro_row("R-REPRO-010", "Analysis Data Reviewer's Guide", asset,
+                     "pass", "info",
+                     paste0("ADRG present and covers all ", length(req),
+                            " required sections (", basename(doc), ")"),
+                     metric_value = rate, metric_unit = "sections", location = doc)
+  } else {
+    missing <- names(req)[!found]
+    row <- repro_row("R-REPRO-010", "Analysis Data Reviewer's Guide", asset,
+                     "warn", "medium",
+                     paste0("ADRG present but missing section(s): ",
+                            paste(missing, collapse = ", ")),
+                     metric_value = rate, metric_unit = "sections", location = doc)
+  }
+  repro_evidence(row, ctx)
+}
+
+#' Generate an ADRG Draft
+#'
+#' Writes a Markdown Analysis Data Reviewer's Guide following the standard PHUSE
+#' / R Consortium ADRG structure (sections 1 to 8 plus an R execution appendix),
+#' pre-filled by statically scanning the submission folder. From the scan it
+#' auto-fills the analysis datasets, the analysis output programs and their
+#' outputs, a program-to-output traceability table of the inputs each program
+#' reads, the proprietary and open-source R packages split with versions, the R
+#' version, and the execution steps. It also adds a Reproducibility and
+#' Verification section (environment, SAS vs R verification, clean-run evidence)
+#' that the base ADRG template omits. Sections needing human judgement are
+#' marked TODO. The draft contains every section [assess_adrg()] checks for.
+#'
+#' @param path Path to the submission's analysis code folder.
+#' @param out Output file. When `NULL`, writes `ADRG.md` inside `path`.
+#' @param config A configuration from [repro_config_default()].
+#' @return The path to the written file, invisibly.
+#'
+#' @examples
+#' d <- file.path(tempdir(), "sub_adrg")
+#' dir.create(d, showWarnings = FALSE)
+#' writeLines("x <- read.csv('data/adsl.csv')", file.path(d, "run.R"))
+#' f <- adrg_skeleton(d)
+#' file.exists(f)
+#'
+#' @export
+adrg_skeleton <- function(path = ".", out = NULL, config = NULL) {
+  assert_path(path)
+  config <- resolve_config(config)
+  if (is.null(out)) out <- file.path(path, "ADRG.md")
+
+  scan  <- adrg_scan(path, config)
+  study <- basename(normalizePath(path, winslash = "/", mustWork = FALSE))
+
+  ds_block <- if (length(scan$datasets)) paste0("- ", scan$datasets) else
+    "TODO: list the analysis datasets (ADSL, ADAE, ADTTE, ...) and their structure."
+
+  prog_out <- if (nrow(scan$programs)) {
+    md_table(scan$programs[, c("Program", "Outputs")])
+  } else "TODO: list the analysis output programs and the outputs they create."
+
+  trace_tbl <- if (nrow(scan$programs)) {
+    md_table(scan$programs[, c("Program", "Inputs")])
+  } else "TODO: map each program to the datasets and variables it reads."
+
+  prop_block <- if (nrow(scan$proprietary)) md_table(scan$proprietary) else
+    "None. All analysis packages are open source."
+
+  open_block <- if (nrow(scan$opensource)) md_table(scan$opensource) else
+    "TODO: list the open-source R packages and versions used."
+
+  install_line <- if (nrow(scan$opensource)) {
+    paste0('install.packages(c(',
+           paste0('"', scan$opensource$Package, '"', collapse = ", "), '))')
+  } else 'install.packages(c( ... ))'
+
+  entry_block <- if (length(scan$entries)) {
+    paste0("- `", scan$entries, "`")
+  } else "- TODO: add the run script(s) a reviewer executes, in order."
+
+  lines <- c(
+    "# Analysis Data Reviewer's Guide (ADRG)",
+    "",
+    paste0("Study: ", study),
+    "",
+    "Draft generated by r4subrepro from a static scan of the analysis folder.",
+    "Lines marked TODO need sponsor input; review every auto-filled table before submission.",
+    "",
+    "## 1. Introduction",
+    "### 1.1 Purpose",
+    "This guide gives context for the analysis datasets and programs beyond the",
+    "data definition document (define.xml), and a summary of conformance findings.",
+    "",
+    "### 1.2 Study Data Standards and Dictionary Inventory",
+    "| Standard or Dictionary | Version Used |",
+    "| --- | --- |",
+    "| SDTM | TODO |",
+    "| ADaM | TODO |",
+    "| Controlled Terminology | TODO |",
+    "| Data Definitions | define.xml TODO |",
+    "| Medications Dictionary | TODO |",
+    "",
+    "### 1.3 Source Data Used for Analysis Dataset Creation",
+    "TODO: describe the source ADaM/SDTM data and where it comes from.",
+    "",
+    "## 2. Protocol Description",
+    "### 2.1 Protocol Number and Title",
+    "TODO: protocol number and title.",
+    "### 2.2 Protocol Design in Relation to ADaM Concepts",
+    "TODO: objectives, methodology, planned number of subjects, study schema.",
+    "",
+    "## 3. Analysis Considerations Related to Multiple Analysis Datasets",
+    "### 3.1 Core Variables",
+    "TODO: variables represented across most analysis datasets.",
+    "### 3.2 Treatment Variables",
+    "TODO: planned vs actual treatment variables.",
+    "### 3.3 Use of Visit Windowing, Unscheduled Visits, and Record Selection",
+    "TODO.",
+    "### 3.4 Imputation/Derivation Methods",
+    "TODO, or 'Not applicable'.",
+    "",
+    "## 4. Analysis Data Creation and Processing Issues",
+    "### 4.1 Data Dependencies",
+    "TODO: dependencies between datasets (for example ADAE -> ADTTE).",
+    "",
+    "## 5. Analysis Dataset Descriptions",
+    "### 5.1 Overview",
+    "TODO: what the submitted analyses cover.",
+    "### 5.2 Analysis Datasets",
+    ds_block,
+    "",
+    "## 6. Data Conformance Summary",
+    "### 6.1 Conformance Inputs",
+    "TODO: Were the datasets evaluated with CDISC ADaM Validation Checks",
+    "(for example Pinnacle 21)? Were they evaluated against define.xml?",
+    "### 6.2 Issues Summary",
+    "TODO: list any conformance findings, severity, and explanation.",
+    "",
+    "## 7. Submission of Programs",
+    "### 7.1 Description",
+    paste0("Programs that produce the analysis results were created using R version ",
+           scan$r_version, "."),
+    "### 7.2 ADaM Programs",
+    "TODO, or 'Not applicable' if only analysis-output programs are submitted.",
+    "### 7.3 Analysis Output Programs",
+    prog_out,
+    "",
+    "### 7.4 Proprietary R Analysis Packages",
+    prop_block,
+    "",
+    "### 7.5 Open-source R Analysis Packages",
+    open_block,
+    "",
+    "### 7.6 Program-to-Output Traceability",
+    "Inputs each program reads (complete with variables and selection criteria):",
+    trace_tbl,
+    "",
+    "## 8. Directory Structure",
+    "Datasets and supporting files follow the FDA Study Data Technical Conformance Guide:",
+    "- m5/datasets/<study>/analysis/adam/datasets - ADaM datasets, this ADRG, define files",
+    "- m5/datasets/<study>/analysis/adam/programs - analysis programs",
+    "",
+    "## 9. Reproducibility and Verification",
+    "### 9.1 Environment and lockfile",
+    "A captured package environment (renv.lock) and a single package list file are",
+    "included so the reviewer can restore exact versions on a standard Windows system.",
+    "### 9.2 Independent verification (SAS vs R)",
+    "TODO: describe how the R results were independently verified, for example an",
+    "SAS vs R comparison of the RTF outputs, or cross-checks against SAS procedures.",
+    "### 9.3 Clean-run reproduction evidence",
+    "TODO: confirm the submitted outputs were reproduced from a clean run, and attach",
+    "the session information. r4subrepro::assess_output_reproduction() can verify this.",
+    "",
+    "## Appendix: Instructions to Execute Analysis Programs in R",
+    paste0("1. Install R ", scan$r_version, "."),
+    "2. Create a working directory and copy all submitted programs into it.",
+    "3. Restore the package environment (for example `renv::restore()` from renv.lock),",
+    "   or set a dated snapshot repository, so the exact versions are installed.",
+    paste0("4. Install the open-source packages: `", install_line, "`"),
+    "5. Install any proprietary packages (see section 7.4) from the bundled sources.",
+    "6. Set the input and output paths relative to the project root.",
+    "7. Execute the analysis program(s):",
+    entry_block,
+    ""
+  )
+  writeLines(lines, out)
+  cli::cli_alert_success("Wrote ADRG draft to {.path {out}}")
+  invisible(out)
+}
+
 #' Assess Reproducibility of a Submission Folder
 #'
 #' Runs the static reproducibility indicators over a submission's analysis code
@@ -654,8 +904,8 @@ assess_sas_r_concordance <- function(r_data, sas_data, keys = NULL,
 #'   default so the scan stays static and never runs submission code unasked.
 #'
 #' @return A validated, combined evidence table for indicators `R-REPRO-001`
-#'   through `R-REPRO-007` and `R-REPRO-009`, plus `R-REPRO-008` when
-#'   `include_execution = TRUE`.
+#'   through `R-REPRO-007`, `R-REPRO-009`, and `R-REPRO-010`, plus `R-REPRO-008`
+#'   when `include_execution = TRUE`.
 #'
 #' @examples
 #' d <- file.path(tempdir(), "sub_all")
@@ -682,7 +932,8 @@ assess_reproducibility <- function(path, ctx = NULL,
     assess_proprietary_pkgs(path, ctx, config),
     assess_clean_run_evidence(path, ctx, config),
     assess_script_depth(path, ctx, config),
-    assess_dual_verification(path, ctx, config)
+    assess_dual_verification(path, ctx, config),
+    assess_adrg(path, ctx, config)
   )
   if (isTRUE(include_execution)) {
     parts <- c(parts, list(assess_output_reproduction(path, ctx = ctx, config = config)))
