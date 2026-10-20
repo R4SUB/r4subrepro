@@ -26,12 +26,18 @@ test_that("fail (high) when run requested but no entry point", {
   expect_equal(e$severity, "high")
 })
 
-test_that("pass when the re-run reproduces submitted outputs exactly", {
+test_that("reproduces submitted outputs exactly (pass on Windows, warn elsewhere)", {
   skip_if_not_installed("callr")
   d <- make_repro_submission(content = "1")
   e <- suppressMessages(assess_output_reproduction(d, run = TRUE))
-  expect_equal(e$result, "pass")
+  # Outputs reproduce (match_rate 1); result is pass on Windows, warn elsewhere
+  # because FDA reviewers execute on Windows.
   expect_equal(e$metric_value, 1)
+  if (.Platform$OS.type == "windows") {
+    expect_equal(e$result, "pass")
+  } else {
+    expect_equal(e$result, "warn")
+  }
 })
 
 test_that("fail when the re-run produces different outputs", {

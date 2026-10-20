@@ -374,7 +374,9 @@ assess_script_depth <- function(path, ctx = NULL, config = NULL) {
 #' outputs under `expected` are hashed from the original folder and compared to
 #' the files the re-run produces in the copy. When `run = FALSE`, or 'callr' is
 #' not installed, no code runs and the indicator returns `na`, which keeps the
-#' check safe offline and on CRAN.
+#' check safe offline and on CRAN. When the outputs reproduce but the run
+#' happened on a non-Windows OS, the result is a `warn`, since FDA reviewers
+#' execute on Windows and the outputs must reproduce there.
 #'
 #' @inheritParams assess_env_lockfile
 #' @param expected Name of the subfolder, relative to `path`, holding the
@@ -477,11 +479,22 @@ assess_output_reproduction <- function(path, expected = NULL, entry = NULL,
   }, logical(1))
 
   rate <- mean(reproduced)
+  run_os <- if (.Platform$OS.type == "windows") "windows" else
+    tolower(Sys.info()[["sysname"]])
   if (all(reproduced)) {
-    row <- repro_row("R-REPRO-008", "Output Reproduction", asset, "pass", "info",
-                     paste0("All ", length(reproduced), " submitted output(s) reproduced exactly"),
-                     metric_value = rate, metric_unit = "match_rate",
-                     location = file.path(path, expected))
+    if (identical(run_os, "windows")) {
+      row <- repro_row("R-REPRO-008", "Output Reproduction", asset, "pass", "info",
+                       paste0("All ", length(reproduced),
+                              " submitted output(s) reproduced exactly on Windows"),
+                       metric_value = rate, metric_unit = "match_rate",
+                       location = file.path(path, expected))
+    } else {
+      row <- repro_row("R-REPRO-008", "Output Reproduction", asset, "warn", "low",
+                       paste0("All ", length(reproduced), " output(s) reproduced on ",
+                              run_os, "; FDA reviews on Windows, so verify there"),
+                       metric_value = rate, metric_unit = "match_rate",
+                       location = file.path(path, expected))
+    }
   } else {
     bad   <- exp_rel[!reproduced]
     shown <- paste(utils::head(bad, 5L), collapse = ", ")
@@ -888,6 +901,66 @@ adrg_skeleton <- function(path = ".", out = NULL, config = NULL) {
   invisible(out)
 }
 
+#' Assess Windows Reviewability
+#'
+#' Flags non-portable constructs that can break when a reviewer runs the code on
+#' Windows, which is the FDA reviewer environment. Beyond the absolute paths that
+#' [assess_path_hygiene()] already catches, this looks for shell-outs
+#' (`system()`/`system2()`), forking (`mclapply` and friends, which do not work
+#' on Windows), and POSIX locations (`/dev/null`, `/tmp/`). Returns evidence with
+#' `indicator_id = "R-REPRO-011"`.
+#'
+#' @inheritParams assess_env_lockfile
+#' @return A validated evidence table.
+#'
+#' @examples
+#' d <- file.path(tempdir(), "sub011")
+#' dir.create(d, showWarnings = FALSE)
+#' writeLines("x <- dplyr::filter(mtcars, mpg > 20)", file.path(d, "a.R"))
+#' ev <- suppressMessages(assess_windows_reviewability(d))
+#' ev$result
+#'
+#' @export
+assess_windows_reviewability <- function(path, ctx = NULL, config = NULL) {
+  assert_path(path)
+  config <- resolve_config(config)
+  ctx    <- repro_resolve_ctx(ctx, path)
+  asset  <- basename(path)
+
+  files <- list_r_files(path)
+  offenders <- character(0)
+  for (f in files) {
+    lines <- read_lines_safe(f)
+    if (length(lines) == 0L) next
+    code <- sub("#.*$", "", lines)
+    for (i in seq_along(code)) {
+      ln <- code[i]
+      for (p in config$windows_risk_patterns) {
+        if (grepl(p, ln, perl = TRUE)) {
+          offenders <- c(offenders, paste0(basename(f), ":", i))
+          break
+        }
+      }
+    }
+  }
+
+  if (length(offenders) == 0L) {
+    row <- repro_row("R-REPRO-011", "Windows Reviewability", asset, "pass", "info",
+                     "No Windows-portability risks detected in scripts",
+                     metric_value = 0, metric_unit = "hits", location = path)
+  } else {
+    shown <- paste(utils::head(offenders, 5L), collapse = ", ")
+    more  <- if (length(offenders) > 5L) paste0(" (+", length(offenders) - 5L, " more)") else ""
+    row <- repro_row("R-REPRO-011", "Windows Reviewability", asset, "warn", "medium",
+                     paste0(length(offenders),
+                            " Windows-portability risk(s) (shell-out, fork, or POSIX path): ",
+                            shown, more),
+                     metric_value = length(offenders), metric_unit = "hits",
+                     location = shown)
+  }
+  repro_evidence(row, ctx)
+}
+
 #' Assess Reproducibility of a Submission Folder
 #'
 #' Runs the static reproducibility indicators over a submission's analysis code
@@ -904,8 +977,8 @@ adrg_skeleton <- function(path = ".", out = NULL, config = NULL) {
 #'   default so the scan stays static and never runs submission code unasked.
 #'
 #' @return A validated, combined evidence table for indicators `R-REPRO-001`
-#'   through `R-REPRO-007`, `R-REPRO-009`, and `R-REPRO-010`, plus `R-REPRO-008`
-#'   when `include_execution = TRUE`.
+#'   through `R-REPRO-007`, `R-REPRO-009`, `R-REPRO-010`, and `R-REPRO-011`, plus
+#'   `R-REPRO-008` when `include_execution = TRUE`.
 #'
 #' @examples
 #' d <- file.path(tempdir(), "sub_all")
@@ -933,7 +1006,8 @@ assess_reproducibility <- function(path, ctx = NULL,
     assess_clean_run_evidence(path, ctx, config),
     assess_script_depth(path, ctx, config),
     assess_dual_verification(path, ctx, config),
-    assess_adrg(path, ctx, config)
+    assess_adrg(path, ctx, config),
+    assess_windows_reviewability(path, ctx, config)
   )
   if (isTRUE(include_execution)) {
     parts <- c(parts, list(assess_output_reproduction(path, ctx = ctx, config = config)))

@@ -1,6 +1,6 @@
 Package: r4subrepro
 Title: Reproducibility and Reviewability Indicators for Clinical Submissions
-Version: 0.2.0
+Version: 0.3.0
 Authors@R:
     person("Pawan Rama", "Mali", email = "prm@outlook.in",
            role = c("aut", "cre", "cph"),

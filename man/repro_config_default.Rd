@@ -23,6 +23,9 @@ outputs an execution check should reproduce (character).}
 \item{verification_patterns}{Character vector of regular expressions that
 match an independent-verification artifact, such as an SAS vs R
 comparison or a QC report.}
+\item{windows_risk_patterns}{Named character vector of regular expressions
+for non-portable constructs that can break on a Windows reviewer
+machine (shell-outs, forking, POSIX paths).}
 \item{adrg_names}{Character vector of patterns matching an Analysis Data
 Reviewer's Guide document file name.}
 \item{adrg_required_sections}{Named character vector of regular

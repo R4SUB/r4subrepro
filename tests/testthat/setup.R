@@ -59,6 +59,7 @@ make_bad_submission <- function() {
     "library(dplyr)",
     "library(acmeinternal)",
     "Sys.setenv(MYVAR = 'x')",
+    "system('rm -rf /tmp/scratch')",
     "adsl <- read.csv('C:/Users/me/study/adsl.csv')",
     "adae <- read.csv('/home/me/study/adae.csv')",
     "deep <- function(x) {",

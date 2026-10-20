@@ -53,7 +53,9 @@ a timeout, so nothing in the submission folder is modified. The submitted
 outputs under \code{expected} are hashed from the original folder and compared to
 the files the re-run produces in the copy. When \code{run = FALSE}, or 'callr' is
 not installed, no code runs and the indicator returns \code{na}, which keeps the
-check safe offline and on CRAN.
+check safe offline and on CRAN. When the outputs reproduce but the run
+happened on a non-Windows OS, the result is a \code{warn}, since FDA reviewers
+execute on Windows and the outputs must reproduce there.
 }
 \examples{
 d <- file.path(tempdir(), "sub008")
