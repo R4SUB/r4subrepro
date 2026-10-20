@@ -12,6 +12,11 @@
   `renv.lock` stub with no versions or a `DESCRIPTION`-only dependency list
   warns, and nothing fails. A top-level dependency list is not a version-pinned
   lockfile.
+- `adrg_skeleton()` now generates an Executive Summary (overview of the analysis
+  programs and their purpose), a Troubleshooting section (path, package
+  install, Rtools/compiled, R-version, and proprietary-package failure modes),
+  and an analysis-type (primary/secondary) column in the program table.
+  `assess_adrg()` requires the executive summary and troubleshooting sections.
 
 # r4subrepro 0.2.0
 

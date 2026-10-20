@@ -37,6 +37,7 @@ make_good_submission <- function() {
   # A complete ADRG covering the required sections (R-REPRO-010).
   writeLines(c(
     "# Analysis Data Reviewer's Guide",
+    "## Executive Summary", "overview of the programs",
     "## 1. Introduction", "### 1.1 Purpose",
     "### 1.2 Study Data Standards and Dictionary Inventory", "define.xml",
     "## 5. Analysis Dataset Descriptions", "ADSL",
@@ -45,6 +46,7 @@ make_good_submission <- function() {
     "### 7.5 Open-source R Analysis Packages", "dplyr",
     "## 8. Directory Structure", "eCTD module 5",
     "## 9. Reproducibility and Verification", "SAS vs R",
+    "## Troubleshooting", "common errors",
     "## Appendix: Instructions to Execute Analysis Programs in R", "install R"
   ), file.path(d, "adrg.md"))
 

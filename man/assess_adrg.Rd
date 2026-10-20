@@ -21,8 +21,10 @@ A validated evidence table.
 \description{
 Checks that the submission includes an Analysis Data Reviewer's Guide and,
 when the document is a readable text format, that it covers the sections a
-reviewer needs: required inputs, run order, expected outputs, the R packages
-and versions, and the environment setup. The reproducibility guidance and
+reviewer needs: an executive summary, study data standards, analysis
+datasets, conformance, programs, R packages, directory structure, execution
+instructions, reproducibility/verification, and troubleshooting. The
+reproducibility guidance and
 real hybrid SAS/R submissions describe the ADRG as the reviewer's map to the
 analysis. Returns evidence with \code{indicator_id = "R-REPRO-010"}.
 }

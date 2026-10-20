@@ -70,7 +70,9 @@ repro_config_default <- function() {
         packages       = "package",
         directory      = "directory structure|ectd|module",
         execution      = "execute|installation|appendix|setup",
-        verification   = "verification|reproduc|concordance"
+        verification   = "verification|reproduc|concordance",
+        exec_summary   = "executive summary|overview of (the )?program",
+        troubleshooting = "troubleshoot"
       ),
       weights = list(
         env_lockfile         = 0.14,
