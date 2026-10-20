@@ -17,11 +17,16 @@ adrg_skeleton(path = ".", out = NULL, config = NULL)
 The path to the written file, invisibly.
 }
 \description{
-Writes a Markdown Analysis Data Reviewer's Guide skeleton for a submission
-folder, pre-filled by inspecting the folder: the detected entry point, the
-data inputs the scripts read, and the R packages they use (with versions from
-a lockfile when present). The draft contains the sections \code{\link[=assess_adrg]{assess_adrg()}}
-looks for, ready for the sponsor to complete.
+Writes a Markdown Analysis Data Reviewer's Guide following the standard PHUSE
+/ R Consortium ADRG structure (sections 1 to 8 plus an R execution appendix),
+pre-filled by statically scanning the submission folder. From the scan it
+auto-fills the analysis datasets, the analysis output programs and their
+outputs, a program-to-output traceability table of the inputs each program
+reads, the proprietary and open-source R packages split with versions, the R
+version, and the execution steps. It also adds a Reproducibility and
+Verification section (environment, SAS vs R verification, clean-run evidence)
+that the base ADRG template omits. Sections needing human judgement are
+marked TODO. The draft contains every section \code{\link[=assess_adrg]{assess_adrg()}} checks for.
 }
 \examples{
 d <- file.path(tempdir(), "sub_adrg")

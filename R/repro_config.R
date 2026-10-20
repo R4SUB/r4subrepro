@@ -53,11 +53,15 @@ repro_config_default <- function() {
                                 "sas.?r", "r.?sas"),
       adrg_names = c("adrg", "analysis.?data.?reviewer"),
       adrg_required_sections = c(
-        inputs      = "input",
-        run_order   = "run.?order",
-        outputs     = "output|table|figure|listing",
-        packages    = "package|r version|session",
-        environment = "environment|renv|setup|install"
+        introduction   = "introduction|purpose",
+        data_standards = "standard|dictionary|define",
+        datasets       = "analysis dataset|dataset description",
+        conformance    = "conformance|pinnacle|validation check",
+        programs       = "program",
+        packages       = "package",
+        directory      = "directory structure|ectd|module",
+        execution      = "execute|installation|appendix|setup",
+        verification   = "verification|reproduc|concordance"
       ),
       weights = list(
         env_lockfile        = 0.15,

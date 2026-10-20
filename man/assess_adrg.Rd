@@ -34,9 +34,7 @@ to generate a Markdown ADRG draft that this check can read in full.
 \examples{
 d <- file.path(tempdir(), "sub010")
 dir.create(d, showWarnings = FALSE)
-writeLines(c("# ADRG", "## Required inputs", "## Run order",
-             "## Expected outputs", "## R packages", "## Environment setup"),
-           file.path(d, "adrg.md"))
+suppressMessages(adrg_skeleton(d))
 ev <- suppressMessages(assess_adrg(d))
 ev$result
 

@@ -60,6 +60,91 @@ read_table_arg <- function(x, arg = "data") {
   cli::cli_abort("{.arg {arg}} must be a data.frame or a path to a CSV or .xpt file.")
 }
 
+# Render a data.frame as a GitHub-flavoured Markdown table. Empty when no rows.
+md_table <- function(df) {
+  if (nrow(df) == 0L) return(character(0))
+  esc    <- function(x) gsub("|", "\\|", as.character(x), fixed = TRUE)
+  header <- paste0("| ", paste(names(df), collapse = " | "), " |")
+  sep    <- paste0("|", paste(rep(" --- ", ncol(df)), collapse = "|"), "|")
+  rows   <- vapply(seq_len(nrow(df)), function(i) {
+    paste0("| ", paste(vapply(df[i, ], esc, character(1)), collapse = " | "), " |")
+  }, character(1))
+  c(header, sep, rows)
+}
+
+# Capture the first quoted file-like argument of calls to any of `funcs`. Used to
+# recover the inputs a program reads and the outputs it writes. Best effort:
+# matches a literal string argument on a single line.
+capture_files <- function(text, funcs) {
+  if (!length(text)) return(character(0))
+  pat <- paste0("(?:", paste(funcs, collapse = "|"),
+                ")\\s*\\([^\"')]*[\"'][^\"']+[\"']")
+  raw <- unlist(regmatches(text, gregexpr(pat, text, perl = TRUE)))
+  files <- sub("[\"']$", "", sub("^[^\"']+[\"']", "", raw))
+  unique(files[nzchar(files)])
+}
+
+# Statically scan a submission folder for the facts an ADRG draft needs:
+# per-program inputs/outputs, analysis datasets, proprietary vs open-source
+# packages (with versions), the R version, and entry points.
+adrg_scan <- function(path, config) {
+  files     <- list_r_files(path)
+  all_lines <- unlist(lapply(files, read_lines_safe))
+
+  read_funcs  <- c("read\\.csv", "read_csv", "read_sas", "read_xpt",
+                   "read\\.table", "readRDS", "read_rds")
+  write_funcs <- c("write\\.csv", "write_csv", "write_xpt", "write_sas",
+                   "saveRDS", "write_rds", "ggsave", "write\\.table",
+                   "rtf_encode", "write_rtf")
+
+  prog_tbl <- data.frame(Program = character(0), Inputs = character(0),
+                         Outputs = character(0), stringsAsFactors = FALSE)
+  for (f in files) {
+    ln   <- read_lines_safe(f)
+    ins  <- capture_files(ln, read_funcs)
+    outs <- capture_files(ln, write_funcs)
+    prog_tbl <- rbind(prog_tbl, data.frame(
+      Program = basename(f),
+      Inputs  = if (length(ins))  paste(ins, collapse = "; ")  else "(none detected)",
+      Outputs = if (length(outs)) paste(outs, collapse = "; ") else "(none detected)",
+      stringsAsFactors = FALSE))
+  }
+
+  present <- list.files(path, recursive = TRUE)
+  ds <- sort(unique(basename(present[grepl("\\.(xpt|sas7bdat)$", tolower(present))])))
+
+  pkgs <- extract_packages(all_lines)
+  pkgs <- setdiff(pkgs, c("base", "stats", "utils", "methods", "graphics",
+                          "grDevices", "datasets", "tools"))
+  kp       <- known_pkgs()
+  versions <- declared_package_versions(path)
+  ver_of   <- function(p) { v <- versions[[p]]; if (is.null(v)) "(add version)" else v }
+  prop <- sort(setdiff(pkgs, kp))
+  open <- sort(intersect(pkgs, kp))
+  prop_tbl <- data.frame(Package = prop, Version = vapply(prop, ver_of, character(1)),
+                         stringsAsFactors = FALSE)
+  open_tbl <- data.frame(Package = open, Version = vapply(open, ver_of, character(1)),
+                         stringsAsFactors = FALSE)
+
+  rver <- "(specify the R version used)"
+  lock <- file.path(path, "renv.lock")
+  if (file.exists(lock)) {
+    lk  <- read_lines_safe(lock)
+    idx <- grep("\"R\"\\s*:", lk)
+    if (length(idx)) {
+      after <- lk[idx[1]:min(length(lk), idx[1] + 5L)]
+      mv <- regmatches(after, regexpr("\"Version\"\\s*:\\s*\"[^\"]+\"", after))
+      mv <- mv[nzchar(mv)]
+      if (length(mv)) rver <- sub("\"$", "", sub(".*:\\s*\"", "", mv[1]))
+    }
+  }
+
+  entries <- present[tolower(basename(present)) %in% tolower(config$entry_point_names)]
+
+  list(programs = prog_tbl, datasets = ds, proprietary = prop_tbl,
+       opensource = open_tbl, r_version = rver, entries = entries)
+}
+
 # Hash every file under a directory, returning a character vector of MD5 sums
 # named by path relative to that directory. Empty when the directory is absent.
 hash_dir <- function(dir) {
@@ -135,6 +220,8 @@ known_pkgs <- function() {
     "here", "renv", "devtools", "usethis", "roxygen2", "pkgdown",
     "admiral", "admiraldev", "metacore", "metatools", "xportr",
     "pharmaverseadam", "pharmaversesdtm", "Tplyr", "rtables", "tern",
+    "r2rtf", "visR", "cowplot", "huxtable", "pharmaRTF", "pkglite",
+    "emmeans", "broom", "survival", "survminer", "nlme", "lme4", "mmrm",
     "r4sub", "r4subcore", "r4subscore", "r4subtrace", "r4subrisk",
     "r4subdata", "r4subprofile", "r4subusability", "r4subpharma", "r4subrepro"
   )
@@ -212,10 +299,7 @@ declared_package_versions <- function(path) {
   cur <- NA_character_
   for (ln in txt) {
     mp <- regmatches(ln, regexpr("\"Package\"\\s*:\\s*\"[^\"]+\"", ln))
-    if (length(mp)) {
-      cur <- sub("\"$", "", sub(".*:\\s*\"", "", mp))
-      next
-    }
+    if (length(mp)) cur <- sub("\"$", "", sub(".*:\\s*\"", "", mp))
     mv <- regmatches(ln, regexpr("\"Version\"\\s*:\\s*\"[^\"]+\"", ln))
     if (length(mv) && !is.na(cur)) {
       res[[cur]] <- sub("\"$", "", sub(".*:\\s*\"", "", mv))
