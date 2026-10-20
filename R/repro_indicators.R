@@ -1,10 +1,15 @@
 #' Assess Environment Lockfile Presence
 #'
-#' Checks whether the submission folder captures its package environment, for
-#' example through an `renv.lock`, a `packrat` lockfile, or a versioned
-#' `DESCRIPTION`. A reviewer cannot reinstall the software stack without one, so
-#' its absence is a high severity finding. Returns R4SUB evidence with
-#' `indicator_id = "R-REPRO-001"`.
+#' Grades how well the submission captures its package environment, because a
+#' reviewer must be able to reinstall the exact software stack. FDA review
+#' guidance stresses that a version-pinned, transitive lockfile (`renv.lock`) is
+#' what makes this possible, and that a plain top-level dependency list is not
+#' enough. Returns R4SUB evidence with `indicator_id = "R-REPRO-001"`:
+#'
+#' - **pass** - a version-pinned `renv.lock` (or a `packrat` lockfile) is present.
+#' - **warn** - an `renv.lock` with no package versions (a stub), or only a
+#'   `DESCRIPTION` dependency list, which is not version-pinned.
+#' - **fail** - no captured environment at all.
 #'
 #' @param path Path to the submission's analysis code folder.
 #' @param ctx A run context from [r4subcore::r4sub_run_context()]. When `NULL` a
@@ -17,7 +22,9 @@
 #' @examples
 #' d <- file.path(tempdir(), "sub001")
 #' dir.create(d, showWarnings = FALSE)
-#' writeLines("{}", file.path(d, "renv.lock"))
+#' writeLines(c('{ "R": { "Version": "4.4.1" },',
+#'              '  "Packages": { "dplyr": { "Package": "dplyr", "Version": "1.1.4" } } }'),
+#'            file.path(d, "renv.lock"))
 #' ev <- suppressMessages(assess_env_lockfile(d))
 #' ev$result
 #'
@@ -28,31 +35,49 @@ assess_env_lockfile <- function(path, ctx = NULL, config = NULL) {
   ctx    <- repro_resolve_ctx(ctx, path)
   asset  <- basename(path)
 
-  found <- character(0)
-  for (nm in config$lockfile_names) {
-    hit <- list.files(path, pattern = paste0("^", nm, "$"), recursive = TRUE,
-                      all.files = TRUE, full.names = FALSE)
-    if (length(hit)) found <- c(found, hit)
-  }
-  # A DESCRIPTION only counts if it pins at least one version.
-  desc <- file.path(path, "DESCRIPTION")
-  if ("DESCRIPTION" %in% basename(found) && file.exists(desc)) {
-    if (!any(grepl("\\(\\s*[<>=]", read_lines_safe(desc)))) {
-      found <- found[basename(found) != "DESCRIPTION"]
-    }
+  renv_hits    <- list.files(path, pattern = "^renv\\.lock$", recursive = TRUE,
+                             full.names = TRUE)
+  packrat_hits <- list.files(path, pattern = "^packrat\\.lock$", recursive = TRUE,
+                             full.names = TRUE)
+  packrat_dir  <- dir.exists(file.path(path, "packrat"))
+  desc_hits    <- list.files(path, pattern = "^DESCRIPTION$", recursive = TRUE,
+                             full.names = TRUE)
+
+  # A real renv.lock pins versions: the R version plus at least one package
+  # version, so two or more "Version" entries.
+  renv_real <- FALSE
+  if (length(renv_hits)) {
+    lines <- read_lines_safe(renv_hits[1L])
+    renv_real <- sum(grepl('"Version"', lines)) >= 2L
   }
 
-  if (length(found) > 0L) {
+  if (renv_real) {
     row <- repro_row("R-REPRO-001", "Environment Lockfile Present", asset,
                      "pass", "info",
-                     paste0("Captured environment found: ",
-                            paste(unique(basename(found)), collapse = ", ")),
+                     "Version-pinned lockfile found: renv.lock",
                      metric_value = 1, metric_unit = "present",
-                     location = paste(unique(found), collapse = "; "))
+                     location = renv_hits[1L])
+  } else if (length(packrat_hits) || packrat_dir) {
+    loc <- if (length(packrat_hits)) packrat_hits[1L] else file.path(path, "packrat")
+    row <- repro_row("R-REPRO-001", "Environment Lockfile Present", asset,
+                     "pass", "info", "Captured environment found: packrat",
+                     metric_value = 1, metric_unit = "present", location = loc)
+  } else if (length(renv_hits)) {
+    row <- repro_row("R-REPRO-001", "Environment Lockfile Present", asset,
+                     "warn", "medium",
+                     "renv.lock present but captures no package versions; run renv::snapshot() to pin them",
+                     metric_value = 0.5, metric_unit = "present",
+                     location = renv_hits[1L])
+  } else if (length(desc_hits)) {
+    row <- repro_row("R-REPRO-001", "Environment Lockfile Present", asset,
+                     "warn", "medium",
+                     "Dependency list (DESCRIPTION) present but not a version-pinned lockfile; add an renv.lock",
+                     metric_value = 0.5, metric_unit = "present",
+                     location = desc_hits[1L])
   } else {
     row <- repro_row("R-REPRO-001", "Environment Lockfile Present", asset,
                      "fail", "high",
-                     "No renv.lock, packrat lockfile, or versioned DESCRIPTION found",
+                     "No renv.lock or packrat lockfile found to pin package versions",
                      metric_value = 0, metric_unit = "present", location = path)
   }
   repro_evidence(row, ctx)
