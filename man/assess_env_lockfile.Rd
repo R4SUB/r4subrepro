@@ -19,16 +19,26 @@ default configuration is used.}
 A validated evidence table (see \code{\link[r4subcore:as_evidence]{r4subcore::as_evidence()}}).
 }
 \description{
-Checks whether the submission folder captures its package environment, for
-example through an \code{renv.lock}, a \code{packrat} lockfile, or a versioned
-\code{DESCRIPTION}. A reviewer cannot reinstall the software stack without one, so
-its absence is a high severity finding. Returns R4SUB evidence with
-\code{indicator_id = "R-REPRO-001"}.
+Grades how well the submission captures its package environment, because a
+reviewer must be able to reinstall the exact software stack. FDA review
+guidance stresses that a version-pinned, transitive lockfile (\code{renv.lock}) is
+what makes this possible, and that a plain top-level dependency list is not
+enough. Returns R4SUB evidence with \code{indicator_id = "R-REPRO-001"}:
+}
+\details{
+\itemize{
+\item \strong{pass} - a version-pinned \code{renv.lock} (or a \code{packrat} lockfile) is present.
+\item \strong{warn} - an \code{renv.lock} with no package versions (a stub), or only a
+\code{DESCRIPTION} dependency list, which is not version-pinned.
+\item \strong{fail} - no captured environment at all.
+}
 }
 \examples{
 d <- file.path(tempdir(), "sub001")
 dir.create(d, showWarnings = FALSE)
-writeLines("{}", file.path(d, "renv.lock"))
+writeLines(c('{ "R": { "Version": "4.4.1" },',
+             '  "Packages": { "dplyr": { "Package": "dplyr", "Version": "1.1.4" } } }'),
+           file.path(d, "renv.lock"))
 ev <- suppressMessages(assess_env_lockfile(d))
 ev$result
 

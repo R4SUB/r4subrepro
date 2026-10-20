@@ -7,6 +7,11 @@
   system the re-run happened on and warns when it is not Windows, since the
   outputs must reproduce on the reviewer's Windows machine.
 - Reweights the indicator set to include Windows reviewability.
+- `assess_env_lockfile()` (`R-REPRO-001`) now grades lockfile quality instead of
+  mere presence: a version-pinned `renv.lock` or `packrat` lockfile passes, an
+  `renv.lock` stub with no versions or a `DESCRIPTION`-only dependency list
+  warns, and nothing fails. A top-level dependency list is not a version-pinned
+  lockfile.
 
 # r4subrepro 0.2.0
 

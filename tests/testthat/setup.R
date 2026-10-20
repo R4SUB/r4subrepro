@@ -6,7 +6,8 @@ make_good_submission <- function() {
   dir.create(file.path(d, "data"), showWarnings = FALSE)
 
   writeLines(c(
-    '{"R": {"Version": "4.5.1"}, "Packages": {"dplyr": {"Package": "dplyr"}}}'
+    '{ "R": { "Version": "4.5.1" },',
+    '  "Packages": { "dplyr": { "Package": "dplyr", "Version": "1.1.4" } } }'
   ), file.path(d, "renv.lock"))
 
   writeLines(c(
