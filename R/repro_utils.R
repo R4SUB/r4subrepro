@@ -43,6 +43,23 @@ read_lines_safe <- function(f) {
            error = function(e) character(0))
 }
 
+# Coerce a data argument into a data.frame: pass a data.frame through, or read a
+# CSV path, or a SAS transport (.xpt) path when 'haven' is available.
+read_table_arg <- function(x, arg = "data") {
+  if (is.data.frame(x)) return(as.data.frame(x))
+  if (is.character(x) && length(x) == 1L && !is.na(x) && file.exists(x)) {
+    ext <- tolower(tools::file_ext(x))
+    if (ext == "xpt") {
+      if (!requireNamespace("haven", quietly = TRUE)) {
+        cli::cli_abort("Reading a {.file .xpt} file needs the {.pkg haven} package.")
+      }
+      return(as.data.frame(haven::read_xpt(x)))
+    }
+    return(utils::read.csv(x, stringsAsFactors = FALSE))
+  }
+  cli::cli_abort("{.arg {arg}} must be a data.frame or a path to a CSV or .xpt file.")
+}
+
 # Hash every file under a directory, returning a character vector of MD5 sums
 # named by path relative to that directory. Empty when the directory is absent.
 hash_dir <- function(dir) {

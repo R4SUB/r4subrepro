@@ -16,6 +16,9 @@
 #'     \item{expected_output_dir}{Name of the subfolder that holds the submitted
 #'       outputs an execution check should reproduce (character).}
 #'     \item{run_timeout}{Maximum seconds to allow a reproduction run (integer).}
+#'     \item{verification_patterns}{Character vector of regular expressions that
+#'       match an independent-verification artifact, such as an SAS vs R
+#'       comparison or a QC report.}
 #'     \item{weights}{Named list of relative indicator weights summing to 1:
 #'       `env_lockfile`, `path_hygiene`, `entry_point`, `hidden_setup`,
 #'       `proprietary_pkgs`, `clean_run`, `script_depth`,
@@ -41,6 +44,9 @@ repro_config_default <- function() {
                                 "runlog.*\\.(txt|log)$"),
       expected_output_dir = "outputs",
       run_timeout         = 600L,
+      verification_patterns = c("qc", "verif", "validation", "concordance",
+                                "compare", "comparison", "double.?program",
+                                "sas.?r", "r.?sas"),
       weights = list(
         env_lockfile        = 0.15,
         path_hygiene        = 0.15,

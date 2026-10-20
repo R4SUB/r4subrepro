@@ -495,6 +495,149 @@ assess_output_reproduction <- function(path, expected = NULL, entry = NULL,
   repro_evidence(row, ctx)
 }
 
+#' Assess Independent (Dual) Verification
+#'
+#' Checks whether the submission declares independent verification of its
+#' results, such as an SAS versus R comparison, QC double programming, or a
+#' concordance report. The reproducibility guidance and real hybrid SAS/R
+#' submissions treat independent verification of R results as first class: it is
+#' how a reviewer is shown that the R output can be trusted. Returns evidence
+#' with `indicator_id = "R-REPRO-009"`.
+#'
+#' This is a static check for the presence of verification evidence. To compare
+#' two result tables directly, use [assess_sas_r_concordance()].
+#'
+#' @inheritParams assess_env_lockfile
+#' @return A validated evidence table.
+#'
+#' @examples
+#' d <- file.path(tempdir(), "sub009")
+#' dir.create(d, showWarnings = FALSE)
+#' writeLines("compare", file.path(d, "qc_compare_sas_r.txt"))
+#' ev <- suppressMessages(assess_dual_verification(d))
+#' ev$result
+#'
+#' @export
+assess_dual_verification <- function(path, ctx = NULL, config = NULL) {
+  assert_path(path)
+  config <- resolve_config(config)
+  ctx    <- repro_resolve_ctx(ctx, path)
+  asset  <- basename(path)
+
+  present <- list.files(path, recursive = TRUE)
+  base_lc <- tolower(basename(present))
+  hit <- character(0)
+  for (pat in config$verification_patterns) {
+    hit <- c(hit, present[grepl(pat, base_lc, perl = TRUE)])
+  }
+  hit <- unique(hit)
+
+  if (length(hit) > 0L) {
+    row <- repro_row("R-REPRO-009", "Dual Verification", asset, "pass", "info",
+                     paste0("Independent verification evidence found: ",
+                            paste(utils::head(basename(hit), 5L), collapse = ", ")),
+                     metric_value = length(hit), metric_unit = "artifacts",
+                     location = paste(utils::head(hit, 5L), collapse = "; "))
+  } else {
+    row <- repro_row("R-REPRO-009", "Dual Verification", asset, "warn", "medium",
+                     "No independent verification evidence (e.g. SAS vs R comparison or QC report) declared",
+                     metric_value = 0, metric_unit = "artifacts", location = path)
+  }
+  repro_evidence(row, ctx)
+}
+
+#' Compare SAS and R Result Tables for Concordance
+#'
+#' Compares two result tables cell by cell and reports how many values agree,
+#' numeric values within `tol` and other values exactly. This supports the SAS
+#' versus R dual-verification step of a hybrid submission, where the same table
+#' is produced in both languages and the results are reconciled. Returns
+#' evidence with `indicator_id = "R-REPRO-009"`.
+#'
+#' @param r_data,sas_data The R and SAS result tables, as data.frames or as
+#'   paths to CSV files (or SAS transport `.xpt` files when 'haven' is
+#'   installed).
+#' @param keys Optional character vector of key columns to order both tables by
+#'   before comparing. When `NULL` the tables are compared in their given order.
+#' @param tol Numeric tolerance for comparing numeric values. Defaults to 1e-8.
+#' @param ctx A run context from [r4subcore::r4sub_run_context()]. When `NULL` a
+#'   default `"SAS_R_COMPARISON"` context is created.
+#' @return A validated evidence table.
+#'
+#' @examples
+#' a <- data.frame(id = 1:3, val = c(1.0, 2.0, 3.0))
+#' b <- data.frame(id = 1:3, val = c(1.0, 2.0, 3.0))
+#' suppressMessages(assess_sas_r_concordance(a, b))$result
+#'
+#' @export
+assess_sas_r_concordance <- function(r_data, sas_data, keys = NULL,
+                                     tol = 1e-8, ctx = NULL) {
+  r <- read_table_arg(r_data, "r_data")
+  s <- read_table_arg(sas_data, "sas_data")
+  if (is.null(ctx)) {
+    ctx <- r4subcore::r4sub_run_context(study_id = "SAS_R_COMPARISON")
+  } else if (!inherits(ctx, "r4sub_run_context")) {
+    cli::cli_abort("{.arg ctx} must be a run context from {.fn r4subcore::r4sub_run_context}.")
+  }
+  asset <- "sas_r_comparison"
+
+  common <- intersect(names(r), names(s))
+  if (length(common) == 0L) {
+    row <- repro_row("R-REPRO-009", "Dual Verification", asset, "warn", "medium",
+                     "No shared columns between the R and SAS tables to compare",
+                     metric_value = 0, metric_unit = "concordance", location = asset)
+    return(repro_evidence(row, ctx))
+  }
+
+  if (!is.null(keys)) {
+    keys <- intersect(keys, common)
+    if (length(keys)) {
+      r <- r[do.call(order, r[keys]), , drop = FALSE]
+      s <- s[do.call(order, s[keys]), , drop = FALSE]
+    }
+  }
+
+  if (nrow(r) != nrow(s)) {
+    row <- repro_row("R-REPRO-009", "Dual Verification", asset, "warn", "medium",
+                     paste0("Row counts differ (R: ", nrow(r), ", SAS: ", nrow(s),
+                            "); cannot align for comparison"),
+                     metric_value = 0, metric_unit = "concordance", location = asset)
+    return(repro_evidence(row, ctx))
+  }
+
+  n <- nrow(r)
+  cell_agree <- function(col) {
+    a <- r[[col]]; b <- s[[col]]
+    if (is.numeric(a) && is.numeric(b)) {
+      ok <- (is.na(a) & is.na(b)) | (!is.na(a) & !is.na(b) & abs(a - b) <= tol)
+    } else {
+      a <- as.character(a); b <- as.character(b)
+      ok <- (is.na(a) & is.na(b)) | (!is.na(a) & !is.na(b) & a == b)
+    }
+    ok[is.na(ok)] <- FALSE
+    ok
+  }
+  agree_by_col <- vapply(common, function(col) sum(cell_agree(col)), integer(1))
+  total <- n * length(common)
+  rate  <- if (total > 0) sum(agree_by_col) / total else 1
+  mismatched <- common[agree_by_col < n]
+
+  if (rate >= 1) {
+    row <- repro_row("R-REPRO-009", "Dual Verification", asset, "pass", "info",
+                     paste0("R and SAS results concordant across ", length(common),
+                            " column(s) and ", n, " row(s)"),
+                     metric_value = 1, metric_unit = "concordance", location = asset)
+  } else {
+    shown <- paste(utils::head(mismatched, 5L), collapse = ", ")
+    more  <- if (length(mismatched) > 5L) paste0(" (+", length(mismatched) - 5L, " more)") else ""
+    row <- repro_row("R-REPRO-009", "Dual Verification", asset, "fail", "high",
+                     paste0(round(rate * 100, 1), "% concordance; mismatches in: ",
+                            shown, more),
+                     metric_value = rate, metric_unit = "concordance", location = shown)
+  }
+  repro_evidence(row, ctx)
+}
+
 #' Assess Reproducibility of a Submission Folder
 #'
 #' Runs the static reproducibility indicators over a submission's analysis code
@@ -511,7 +654,8 @@ assess_output_reproduction <- function(path, expected = NULL, entry = NULL,
 #'   default so the scan stays static and never runs submission code unasked.
 #'
 #' @return A validated, combined evidence table for indicators `R-REPRO-001`
-#'   through `R-REPRO-007`, plus `R-REPRO-008` when `include_execution = TRUE`.
+#'   through `R-REPRO-007` and `R-REPRO-009`, plus `R-REPRO-008` when
+#'   `include_execution = TRUE`.
 #'
 #' @examples
 #' d <- file.path(tempdir(), "sub_all")
@@ -537,7 +681,8 @@ assess_reproducibility <- function(path, ctx = NULL,
     assess_hidden_setup(path, ctx, config),
     assess_proprietary_pkgs(path, ctx, config),
     assess_clean_run_evidence(path, ctx, config),
-    assess_script_depth(path, ctx, config)
+    assess_script_depth(path, ctx, config),
+    assess_dual_verification(path, ctx, config)
   )
   if (isTRUE(include_execution)) {
     parts <- c(parts, list(assess_output_reproduction(path, ctx = ctx, config = config)))

@@ -7,6 +7,11 @@
   returns `na`.
 - `assess_reproducibility()` gains `include_execution` to append the
   output-reproduction check.
+- Adds `assess_dual_verification()` (`R-REPRO-009`), which checks that the
+  submission declares independent verification of its results, such as an SAS
+  versus R comparison or a QC report, and `assess_sas_r_concordance()`, which
+  compares two result tables cell by cell within a tolerance. The static check
+  is included in `assess_reproducibility()`.
 - Reweights the indicator set to accommodate the new reproducibility,
   verification, and reviewer-guide indicators.
 
