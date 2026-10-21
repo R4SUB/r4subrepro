@@ -2,7 +2,7 @@
 % Please edit documentation in R/repro_indicators.R
 \name{assess_proprietary_pkgs}
 \alias{assess_proprietary_pkgs}
-\title{Assess Proprietary Package Declaration}
+\title{Assess Package Reproducibility Tiering}
 \usage{
 assess_proprietary_pkgs(path, ctx = NULL, config = NULL)
 }
@@ -19,13 +19,28 @@ default configuration is used.}
 A validated evidence table.
 }
 \description{
-Extracts the packages referenced by the scripts and flags any that are not in
-the bundled allowlist of base, recommended, and common CRAN and pharma
-packages, unless the folder declares them in an \code{renv.lock} or versioned
-\code{DESCRIPTION}. Undeclared internal packages break a review, so this is a warn.
-The check uses a bundled allowlist rather than a live CRAN query, so it is
-deterministic and works offline. Returns evidence with
-\code{indicator_id = "R-REPRO-005"}.
+Extracts the packages referenced by the scripts and sorts them into tiers by
+how reproducible their source is for a reviewer, rather than treating the set
+as merely known or unknown. FDA review guidance distinguishes CRAN packages
+(which a reviewer restores from a dated snapshot) from non-CRAN GitHub, Git,
+URL, or local packages (which the sponsor must bundle) and from undeclared
+proprietary packages (which block a review entirely). The tiers are:
+}
+\details{
+\itemize{
+\item \strong{CRAN / known} - in the bundled allowlist, or declared in \code{renv.lock} with
+a repository source: reproducible from a snapshot.
+\item \strong{non-CRAN, declared} - declared in \code{renv.lock} with a GitHub, Git, URL,
+Bioconductor, or local source: reproducible only if the source is bundled.
+\item \strong{proprietary / undeclared} - referenced but neither known nor declared
+anywhere: not reproducible as submitted.
+}
+
+The result is a \strong{pass} when every package is CRAN or known, a low-severity
+\strong{warn} when the only non-CRAN packages are declared (bundle the sources),
+and a medium-severity \strong{warn} when any package is undeclared. The check uses
+a bundled allowlist rather than a live CRAN query, so it is deterministic and
+works offline. Returns evidence with \code{indicator_id = "R-REPRO-005"}.
 }
 \examples{
 d <- file.path(tempdir(), "sub005")

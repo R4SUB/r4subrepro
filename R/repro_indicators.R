@@ -245,15 +245,27 @@ assess_hidden_setup <- function(path, ctx = NULL, config = NULL) {
   repro_evidence(row, ctx)
 }
 
-#' Assess Proprietary Package Declaration
+#' Assess Package Reproducibility Tiering
 #'
-#' Extracts the packages referenced by the scripts and flags any that are not in
-#' the bundled allowlist of base, recommended, and common CRAN and pharma
-#' packages, unless the folder declares them in an `renv.lock` or versioned
-#' `DESCRIPTION`. Undeclared internal packages break a review, so this is a warn.
-#' The check uses a bundled allowlist rather than a live CRAN query, so it is
-#' deterministic and works offline. Returns evidence with
-#' `indicator_id = "R-REPRO-005"`.
+#' Extracts the packages referenced by the scripts and sorts them into tiers by
+#' how reproducible their source is for a reviewer, rather than treating the set
+#' as merely known or unknown. FDA review guidance distinguishes CRAN packages
+#' (which a reviewer restores from a dated snapshot) from non-CRAN GitHub, Git,
+#' URL, or local packages (which the sponsor must bundle) and from undeclared
+#' proprietary packages (which block a review entirely). The tiers are:
+#'
+#' - **CRAN / known** - in the bundled allowlist, or declared in `renv.lock` with
+#'   a repository source: reproducible from a snapshot.
+#' - **non-CRAN, declared** - declared in `renv.lock` with a GitHub, Git, URL,
+#'   Bioconductor, or local source: reproducible only if the source is bundled.
+#' - **proprietary / undeclared** - referenced but neither known nor declared
+#'   anywhere: not reproducible as submitted.
+#'
+#' The result is a **pass** when every package is CRAN or known, a low-severity
+#' **warn** when the only non-CRAN packages are declared (bundle the sources),
+#' and a medium-severity **warn** when any package is undeclared. The check uses
+#' a bundled allowlist rather than a live CRAN query, so it is deterministic and
+#' works offline. Returns evidence with `indicator_id = "R-REPRO-005"`.
 #'
 #' @inheritParams assess_env_lockfile
 #' @return A validated evidence table.
@@ -275,22 +287,52 @@ assess_proprietary_pkgs <- function(path, ctx = NULL, config = NULL) {
   files <- list_r_files(path)
   text  <- unlist(lapply(files, read_lines_safe))
   used  <- extract_packages(text)
-  allow <- c(known_pkgs(), declared_packages(path))
-  flagged <- setdiff(used, allow)
 
-  if (length(flagged) == 0L) {
-    row <- repro_row("R-REPRO-005", "Proprietary Packages Declared", asset,
+  known    <- known_pkgs()
+  declared <- declared_packages(path)
+  sources  <- declared_package_sources(path)
+
+  tier_of <- function(p) {
+    if (p %in% known) return("cran")
+    if (p %in% declared) {
+      # Downgrade to non-CRAN only when a non-repository source is positively
+      # identified (GitHub/Git/URL/local). A package declared from a repository
+      # source, or declared without source detail, is treated as reproducible.
+      src <- sources[[p]]
+      if (!is.null(src) && identical(src, "noncran")) return("noncran")
+      return("cran")
+    }
+    "undeclared"
+  }
+  tiers  <- vapply(used, tier_of, character(1))
+  noncran    <- names(tiers)[tiers == "noncran"]
+  undeclared <- names(tiers)[tiers == "undeclared"]
+  attention  <- length(noncran) + length(undeclared)
+
+  if (attention == 0L) {
+    row <- repro_row("R-REPRO-005", "Package Reproducibility Tiering", asset,
                      "pass", "info",
-                     "All referenced packages are known or declared",
+                     "All referenced packages are CRAN or known-reproducible",
                      metric_value = 0, metric_unit = "packages", location = path)
+  } else if (length(undeclared) > 0L) {
+    detail <- paste0(length(undeclared), " undeclared/proprietary: ",
+                     paste(undeclared, collapse = ", "))
+    if (length(noncran)) {
+      detail <- paste0(detail, "; ", length(noncran),
+                       " non-CRAN declared: ", paste(noncran, collapse = ", "))
+    }
+    row <- repro_row("R-REPRO-005", "Package Reproducibility Tiering", asset,
+                     "warn", "medium", detail,
+                     metric_value = attention, metric_unit = "packages",
+                     location = paste(c(undeclared, noncran), collapse = ", "))
   } else {
-    row <- repro_row("R-REPRO-005", "Proprietary Packages Declared", asset,
-                     "warn", "medium",
-                     paste0(length(flagged),
-                            " undeclared or unknown package(s): ",
-                            paste(flagged, collapse = ", ")),
-                     metric_value = length(flagged), metric_unit = "packages",
-                     location = paste(flagged, collapse = ", "))
+    row <- repro_row("R-REPRO-005", "Package Reproducibility Tiering", asset,
+                     "warn", "low",
+                     paste0(length(noncran),
+                            " non-CRAN package(s) declared from source; bundle the sources: ",
+                            paste(noncran, collapse = ", ")),
+                     metric_value = attention, metric_unit = "packages",
+                     location = paste(noncran, collapse = ", "))
   }
   repro_evidence(row, ctx)
 }
@@ -388,10 +430,16 @@ assess_script_depth <- function(path, ctx = NULL, config = NULL) {
 #' Assess Output Reproduction
 #'
 #' Re-runs the submission's entry point in a fresh R session and checks that the
-#' outputs it produces match the submitted outputs byte for byte. This is the
-#' executable counterpart to [assess_clean_run_evidence()], which only checks
-#' that a run log is present. Returns evidence with
-#' `indicator_id = "R-REPRO-008"`.
+#' outputs it produces match the submitted outputs. This is the executable
+#' counterpart to [assess_clean_run_evidence()], which only checks that a run log
+#' is present. Returns evidence with `indicator_id = "R-REPRO-008"`.
+#'
+#' Comparison separates analytical content from cosmetic bytes. Data outputs
+#' (CSV, text) must match byte for byte, but formatted outputs (`rtf`, `pdf`;
+#' see `config$cosmetic_output_ext`) embed a generation timestamp that changes on
+#' every run, so those are compared after the timestamps are stripped. An output
+#' that differs only in its embedded time still counts as reproduced, and the
+#' message says so; only a difference in the actual results is a failure.
 #'
 #' Execution is opt-in and sandboxed. The folder is copied to a temporary
 #' location and the entry point runs in a separate R session (via 'callr') with
@@ -496,27 +544,34 @@ assess_output_reproduction <- function(path, expected = NULL, entry = NULL,
     return(repro_evidence(row, ctx))
   }
 
-  produced_hashes <- hash_dir(file.path(run_dir, expected))
   exp_rel <- names(expected_hashes)
-  reproduced <- vapply(exp_rel, function(f) {
-    i <- match(f, names(produced_hashes))
-    !is.na(i) && identical(unname(produced_hashes[i]), unname(expected_hashes[[f]]))
-  }, logical(1))
-
+  status <- vapply(exp_rel, function(f) {
+    output_status(file.path(path, expected, f),
+                  file.path(run_dir, expected, f),
+                  config$cosmetic_output_ext)
+  }, character(1))
+  reproduced  <- status %in% c("exact", "cosmetic")
+  n_cosmetic  <- sum(status == "cosmetic")
   rate <- mean(reproduced)
   run_os <- if (.Platform$OS.type == "windows") "windows" else
     tolower(Sys.info()[["sysname"]])
+
   if (all(reproduced)) {
+    how <- if (n_cosmetic > 0L) {
+      paste0("All ", length(status), " output(s) reproduced analytically (",
+             n_cosmetic, " match after removing embedded timestamps)")
+    } else {
+      paste0("All ", length(status), " submitted output(s) reproduced exactly")
+    }
     if (identical(run_os, "windows")) {
       row <- repro_row("R-REPRO-008", "Output Reproduction", asset, "pass", "info",
-                       paste0("All ", length(reproduced),
-                              " submitted output(s) reproduced exactly on Windows"),
+                       paste0(how, " on Windows"),
                        metric_value = rate, metric_unit = "match_rate",
                        location = file.path(path, expected))
     } else {
       row <- repro_row("R-REPRO-008", "Output Reproduction", asset, "warn", "low",
-                       paste0("All ", length(reproduced), " output(s) reproduced on ",
-                              run_os, "; FDA reviews on Windows, so verify there"),
+                       paste0(how, " on ", run_os,
+                              "; FDA reviews on Windows, so verify there"),
                        metric_value = rate, metric_unit = "match_rate",
                        location = file.path(path, expected))
     }
@@ -525,7 +580,7 @@ assess_output_reproduction <- function(path, expected = NULL, entry = NULL,
     shown <- paste(utils::head(bad, 5L), collapse = ", ")
     more  <- if (length(bad) > 5L) paste0(" (+", length(bad) - 5L, " more)") else ""
     row <- repro_row("R-REPRO-008", "Output Reproduction", asset, "fail", "high",
-                     paste0(length(bad), " of ", length(reproduced),
+                     paste0(length(bad), " of ", length(status),
                             " output(s) did not reproduce: ", shown, more),
                      metric_value = rate, metric_unit = "match_rate",
                      location = shown)
@@ -1010,6 +1065,66 @@ assess_windows_reviewability <- function(path, ctx = NULL, config = NULL) {
   repro_evidence(row, ctx)
 }
 
+#' Assess Compiled-Code Toolchain
+#'
+#' Checks whether the submission compiles native code and, if so, whether it
+#' documents the compiler toolchain a reviewer needs to build it. FDA reviewers
+#' run R on Windows with Rtools; CRAN packages install as prebuilt Windows
+#' binaries and need no toolchain, but a submission that ships C, C++, or Fortran
+#' source, a `src/` folder, a `Makevars` build script, or an inline compilation
+#' call (`Rcpp::sourceCpp()`, `cppFunction()`, `R CMD SHLIB`) must be built from
+#' source, which fails on a reviewer's machine without the matching Rtools.
+#' Returns evidence with `indicator_id = "R-REPRO-012"`:
+#'
+#' - **pass** - no native compilation (CRAN binaries suffice), or compilation is
+#'   present and the Rtools toolchain is documented.
+#' - **warn** - the submission compiles native code but does not document the
+#'   Rtools toolchain needed to build it on Windows.
+#'
+#' @inheritParams assess_env_lockfile
+#' @return A validated evidence table.
+#'
+#' @examples
+#' d <- file.path(tempdir(), "sub012")
+#' dir.create(d, showWarnings = FALSE)
+#' writeLines("x <- dplyr::filter(mtcars, mpg > 20)", file.path(d, "a.R"))
+#' ev <- suppressMessages(assess_compiled_toolchain(d))
+#' ev$result
+#'
+#' @export
+assess_compiled_toolchain <- function(path, ctx = NULL, config = NULL) {
+  assert_path(path)
+  config <- resolve_config(config)
+  ctx    <- repro_resolve_ctx(ctx, path)
+  asset  <- basename(path)
+
+  signals <- compiled_signals(path, config)
+
+  if (length(signals) == 0L) {
+    row <- repro_row("R-REPRO-012", "Compiled-Code Toolchain", asset, "pass",
+                     "info",
+                     "No native compilation; CRAN packages install as prebuilt Windows binaries, so no Rtools toolchain is required",
+                     metric_value = 0, metric_unit = "signals", location = path)
+  } else if (documents_toolchain(path, config)) {
+    row <- repro_row("R-REPRO-012", "Compiled-Code Toolchain", asset, "pass",
+                     "info",
+                     paste0("Submission compiles native code (",
+                            paste(signals, collapse = ", "),
+                            ") and documents the Rtools toolchain"),
+                     metric_value = length(signals), metric_unit = "signals",
+                     location = path)
+  } else {
+    row <- repro_row("R-REPRO-012", "Compiled-Code Toolchain", asset, "warn",
+                     "medium",
+                     paste0("Submission compiles native code (",
+                            paste(signals, collapse = ", "),
+                            ") but does not document the Rtools toolchain reviewers need to build it on Windows"),
+                     metric_value = length(signals), metric_unit = "signals",
+                     location = path)
+  }
+  repro_evidence(row, ctx)
+}
+
 #' Assess Reproducibility of a Submission Folder
 #'
 #' Runs the static reproducibility indicators over a submission's analysis code
@@ -1026,8 +1141,8 @@ assess_windows_reviewability <- function(path, ctx = NULL, config = NULL) {
 #'   default so the scan stays static and never runs submission code unasked.
 #'
 #' @return A validated, combined evidence table for indicators `R-REPRO-001`
-#'   through `R-REPRO-007`, `R-REPRO-009`, `R-REPRO-010`, and `R-REPRO-011`, plus
-#'   `R-REPRO-008` when `include_execution = TRUE`.
+#'   through `R-REPRO-007`, `R-REPRO-009`, `R-REPRO-010`, `R-REPRO-011`, and
+#'   `R-REPRO-012`, plus `R-REPRO-008` when `include_execution = TRUE`.
 #'
 #' @examples
 #' d <- file.path(tempdir(), "sub_all")
@@ -1056,7 +1171,8 @@ assess_reproducibility <- function(path, ctx = NULL,
     assess_script_depth(path, ctx, config),
     assess_dual_verification(path, ctx, config),
     assess_adrg(path, ctx, config),
-    assess_windows_reviewability(path, ctx, config)
+    assess_windows_reviewability(path, ctx, config),
+    assess_compiled_toolchain(path, ctx, config)
   )
   if (isTRUE(include_execution)) {
     parts <- c(parts, list(assess_output_reproduction(path, ctx = ctx, config = config)))

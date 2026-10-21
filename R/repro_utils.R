@@ -288,6 +288,126 @@ declared_packages <- function(path) {
   unique(declared)
 }
 
+# Source tier of each package declared in an renv.lock, as a named list
+# pkg -> "cran" (a versioned repository a reviewer can restore from a dated
+# snapshot) or "noncran" (GitHub, Git, URL, Bioconductor, or local source that
+# must be bundled with the submission). Same light line parser as the versions
+# reader: track the current package, then classify from its "Source" field.
+declared_package_sources <- function(path) {
+  res <- list()
+  lock <- file.path(path, "renv.lock")
+  if (!file.exists(lock)) return(res)
+  txt <- read_lines_safe(lock)
+  cur <- NA_character_
+  for (ln in txt) {
+    mp <- regmatches(ln, regexpr("\"Package\"\\s*:\\s*\"[^\"]+\"", ln))
+    if (length(mp)) cur <- sub("\"$", "", sub(".*:\\s*\"", "", mp))
+    ms <- regmatches(ln, regexpr("\"Source\"\\s*:\\s*\"[^\"]+\"", ln))
+    if (length(ms) && !is.na(cur)) {
+      src <- tolower(sub("\"$", "", sub(".*:\\s*\"", "", ms)))
+      res[[cur]] <- if (src %in% c("repository", "cran")) "cran" else "noncran"
+      cur <- NA_character_
+    }
+  }
+  res
+}
+
+# Read a file as raw bytes, returning NULL on any error or an empty file.
+read_bytes <- function(path) {
+  n <- tryCatch(file.info(path)$size, error = function(e) NA_real_)
+  if (is.na(n) || n == 0) return(NULL)
+  con <- tryCatch(file(path, "rb"), error = function(e) NULL)
+  if (is.null(con)) return(NULL)
+  on.exit(close(con))
+  tryCatch(readBin(con, "raw", n), error = function(e) NULL)
+}
+
+# Normalise a cosmetic output file to its analytical content by stripping the
+# embedded generation timestamps that change on every run (RTF creatim/revtim
+# groups, PDF CreationDate/ModDate and file ID). Returns the normalised text, or
+# NA when the file cannot be read. Best effort: it removes the volatile bytes a
+# re-run changes so that two outputs with identical numbers compare equal.
+normalize_cosmetic <- function(path, ext) {
+  raw <- read_bytes(path)
+  if (is.null(raw)) return(NA_character_)
+  raw[raw == as.raw(0L)] <- as.raw(0x20)   # drop NULs so rawToChar is safe
+  txt <- tryCatch(rawToChar(raw), error = function(e) NA_character_)
+  if (is.na(txt)) return(NA_character_)
+  if (ext == "rtf") {
+    txt <- gsub("\\{\\\\\\*?\\\\(creatim|revtim|printim|buptim)[^}]*\\}", "",
+                txt, perl = TRUE, useBytes = TRUE)
+    txt <- gsub("\\\\(yr|mo|dy|hr|min|sec)[0-9]+", "",
+                txt, perl = TRUE, useBytes = TRUE)
+  } else if (ext == "pdf") {
+    txt <- gsub("/(CreationDate|ModDate)\\s*\\(D:[^)]*\\)", "",
+                txt, perl = TRUE, useBytes = TRUE)
+    txt <- gsub("/ID\\s*\\[[^]]*\\]", "", txt, perl = TRUE, useBytes = TRUE)
+  }
+  gsub("[[:space:]]+", " ", txt, perl = TRUE, useBytes = TRUE)
+}
+
+# Classify one produced output against its submitted counterpart:
+#   exact    - byte-for-byte identical
+#   cosmetic - differs only in embedded timestamps (cosmetic formats)
+#   mismatch - analytical content differs
+#   missing  - the re-run did not produce the file
+output_status <- function(exp_path, prod_path, cosmetic_ext) {
+  if (!file.exists(prod_path)) return("missing")
+  if (identical(unname(tools::md5sum(exp_path)),
+                unname(tools::md5sum(prod_path)))) return("exact")
+  ext <- tolower(tools::file_ext(exp_path))
+  if (ext %in% cosmetic_ext) {
+    a <- normalize_cosmetic(exp_path, ext)
+    b <- normalize_cosmetic(prod_path, ext)
+    if (!is.na(a) && !is.na(b) && identical(a, b)) return("cosmetic")
+  }
+  "mismatch"
+}
+
+# Detect signals that the submission compiles native code and so needs a
+# compiler toolchain (Rtools on Windows): C/C++/Fortran source, a src/ folder,
+# Makevars build scripts, or inline compilation calls in the R code. Returns a
+# character vector of the signals found (empty when none).
+compiled_signals <- function(path, config) {
+  signals <- character(0)
+  present <- list.files(path, recursive = TRUE)
+  base_lc <- tolower(basename(present))
+
+  ext_hits <- present[tolower(tools::file_ext(present)) %in% config$compiled_source_ext]
+  if (length(ext_hits)) {
+    signals <- c(signals, paste0("native source (",
+                                 paste(utils::head(basename(ext_hits), 3L),
+                                       collapse = ", "), ")"))
+  }
+  if (any(base_lc %in% config$compiled_build_files)) {
+    signals <- c(signals, "Makevars build script")
+  }
+  if (dir.exists(file.path(path, "src"))) signals <- c(signals, "src/ folder")
+
+  text <- paste(unlist(lapply(list_r_files(path), read_lines_safe)),
+                collapse = "\n")
+  for (p in config$compiled_call_patterns) {
+    if (grepl(p, text, perl = TRUE)) {
+      signals <- c(signals, "inline compilation call")
+      break
+    }
+  }
+  unique(signals)
+}
+
+# Whether the submission documents the compiler toolchain (Rtools) in any of its
+# text files (ADRG, README, run logs).
+documents_toolchain <- function(path, config) {
+  docs <- list.files(path, recursive = TRUE, full.names = TRUE,
+                     pattern = "\\.(md|markdown|txt|rmd|rtf|tex|org)$",
+                     ignore.case = TRUE)
+  for (f in docs) {
+    text <- tolower(paste(read_lines_safe(f), collapse = "\n"))
+    if (grepl(config$toolchain_doc_pattern, text, perl = TRUE)) return(TRUE)
+  }
+  FALSE
+}
+
 # Package versions declared in an renv.lock, as a named list pkg -> version.
 # Light line parser so no JSON dependency is needed; handles the common
 # "Package" then "Version" layout renv writes.

@@ -41,12 +41,18 @@ A validated evidence table.
 }
 \description{
 Re-runs the submission's entry point in a fresh R session and checks that the
-outputs it produces match the submitted outputs byte for byte. This is the
-executable counterpart to \code{\link[=assess_clean_run_evidence]{assess_clean_run_evidence()}}, which only checks
-that a run log is present. Returns evidence with
-\code{indicator_id = "R-REPRO-008"}.
+outputs it produces match the submitted outputs. This is the executable
+counterpart to \code{\link[=assess_clean_run_evidence]{assess_clean_run_evidence()}}, which only checks that a run log
+is present. Returns evidence with \code{indicator_id = "R-REPRO-008"}.
 }
 \details{
+Comparison separates analytical content from cosmetic bytes. Data outputs
+(CSV, text) must match byte for byte, but formatted outputs (\code{rtf}, \code{pdf};
+see \code{config$cosmetic_output_ext}) embed a generation timestamp that changes on
+every run, so those are compared after the timestamps are stripped. An output
+that differs only in its embedded time still counts as reproduced, and the
+message says so; only a difference in the actual results is a failure.
+
 Execution is opt-in and sandboxed. The folder is copied to a temporary
 location and the entry point runs in a separate R session (via 'callr') with
 a timeout, so nothing in the submission folder is modified. The submitted
