@@ -16,6 +16,18 @@
 #'     \item{expected_output_dir}{Name of the subfolder that holds the submitted
 #'       outputs an execution check should reproduce (character).}
 #'     \item{run_timeout}{Maximum seconds to allow a reproduction run (integer).}
+#'     \item{cosmetic_output_ext}{Character vector of output file extensions
+#'       (such as `rtf` and `pdf`) whose embedded timestamps are stripped before
+#'       comparison, so an output that differs only in generation time counts as
+#'       analytically reproduced rather than a mismatch.}
+#'     \item{compiled_source_ext}{Character vector of file extensions that mark
+#'       compiled native source a reviewer must build (C, C++, Fortran).}
+#'     \item{compiled_call_patterns}{Character vector of regular expressions for
+#'       inline compilation calls (`sourceCpp`, `cppFunction`, `R CMD SHLIB`).}
+#'     \item{compiled_build_files}{Character vector of build-script file names
+#'       (`Makevars`, `Makevars.win`) that indicate native compilation.}
+#'     \item{toolchain_doc_pattern}{Regular expression that matches documentation
+#'       of the compiler toolchain (Rtools) reviewers need to build from source.}
 #'     \item{verification_patterns}{Character vector of regular expressions that
 #'       match an independent-verification artifact, such as an SAS vs R
 #'       comparison or a QC report.}
@@ -29,7 +41,8 @@
 #'     \item{weights}{Named list of relative indicator weights summing to 1:
 #'       `env_lockfile`, `path_hygiene`, `entry_point`, `hidden_setup`,
 #'       `proprietary_pkgs`, `clean_run`, `script_depth`,
-#'       `output_reproduction`, `dual_verification`, `adrg`.}
+#'       `output_reproduction`, `dual_verification`, `adrg`,
+#'       `windows_reviewability`, `compiled_toolchain`.}
 #'   }
 #'
 #' @examples
@@ -51,6 +64,13 @@ repro_config_default <- function() {
                                 "runlog.*\\.(txt|log)$"),
       expected_output_dir = "outputs",
       run_timeout         = 600L,
+      cosmetic_output_ext = c("rtf", "pdf"),
+      compiled_source_ext = c("c", "cc", "cpp", "cxx", "h", "hpp",
+                              "f", "f90", "f95", "f77"),
+      compiled_call_patterns = c("\\bsourceCpp\\s*\\(", "\\bcppFunction\\s*\\(",
+                                 "\\bcxxfunction\\s*\\(", "R CMD SHLIB"),
+      compiled_build_files = c("makevars", "makevars.win"),
+      toolchain_doc_pattern = "rtools",
       verification_patterns = c("qc", "verif", "validation", "concordance",
                                 "compare", "comparison", "double.?program",
                                 "sas.?r", "r.?sas"),
@@ -75,17 +95,18 @@ repro_config_default <- function() {
         troubleshooting = "troubleshoot"
       ),
       weights = list(
-        env_lockfile         = 0.14,
-        path_hygiene         = 0.13,
-        entry_point          = 0.09,
-        hidden_setup         = 0.07,
-        proprietary_pkgs     = 0.07,
-        clean_run            = 0.04,
-        script_depth         = 0.06,
-        output_reproduction  = 0.13,
-        dual_verification    = 0.09,
-        adrg                 = 0.08,
-        windows_reviewability = 0.10
+        env_lockfile          = 0.13,
+        path_hygiene          = 0.12,
+        entry_point           = 0.08,
+        hidden_setup          = 0.07,
+        proprietary_pkgs      = 0.07,
+        clean_run             = 0.04,
+        script_depth          = 0.05,
+        output_reproduction   = 0.12,
+        dual_verification     = 0.09,
+        adrg                  = 0.08,
+        windows_reviewability = 0.09,
+        compiled_toolchain    = 0.06
       )
     ),
     class = "repro_config"

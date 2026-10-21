@@ -1,3 +1,23 @@
+# r4subrepro 0.4.0
+
+- Adds `assess_compiled_toolchain()` (`R-REPRO-012`), which detects whether the
+  submission compiles native code (C/C++/Fortran source, a `src/` folder, a
+  `Makevars` script, or an inline `sourceCpp()`/`cppFunction()`/`R CMD SHLIB`
+  call) and, when it does, checks that the Rtools toolchain reviewers need to
+  build it on Windows is documented. CRAN packages install as prebuilt Windows
+  binaries, so a submission without local compilation passes.
+- `assess_proprietary_pkgs()` (`R-REPRO-005`) now tiers referenced packages by
+  how reproducible their source is instead of a binary known/unknown split:
+  CRAN or known packages pass, non-CRAN packages declared from a GitHub/Git/URL/
+  local source warn (bundle the sources), and undeclared proprietary packages
+  warn at medium severity. Renamed to "Package Reproducibility Tiering".
+- `assess_output_reproduction()` (`R-REPRO-008`) now separates analytical
+  content from cosmetic bytes: data outputs must match exactly, but `rtf` and
+  `pdf` outputs are compared after their embedded generation timestamps are
+  stripped, so an output that differs only in generation time counts as
+  reproduced rather than a false mismatch.
+- Reweights the indicator set to include the compiled-code toolchain check.
+
 # r4subrepro 0.3.0
 
 - Adds `assess_windows_reviewability()` (`R-REPRO-011`), a static check for

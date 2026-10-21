@@ -20,6 +20,18 @@ match a clean run log or \code{sessionInfo()} capture.}
 \item{expected_output_dir}{Name of the subfolder that holds the submitted
 outputs an execution check should reproduce (character).}
 \item{run_timeout}{Maximum seconds to allow a reproduction run (integer).}
+\item{cosmetic_output_ext}{Character vector of output file extensions
+(such as \code{rtf} and \code{pdf}) whose embedded timestamps are stripped before
+comparison, so an output that differs only in generation time counts as
+analytically reproduced rather than a mismatch.}
+\item{compiled_source_ext}{Character vector of file extensions that mark
+compiled native source a reviewer must build (C, C++, Fortran).}
+\item{compiled_call_patterns}{Character vector of regular expressions for
+inline compilation calls (\code{sourceCpp}, \code{cppFunction}, \verb{R CMD SHLIB}).}
+\item{compiled_build_files}{Character vector of build-script file names
+(\code{Makevars}, \code{Makevars.win}) that indicate native compilation.}
+\item{toolchain_doc_pattern}{Regular expression that matches documentation
+of the compiler toolchain (Rtools) reviewers need to build from source.}
 \item{verification_patterns}{Character vector of regular expressions that
 match an independent-verification artifact, such as an SAS vs R
 comparison or a QC report.}
@@ -33,7 +45,8 @@ expressions for the sections an ADRG should contain.}
 \item{weights}{Named list of relative indicator weights summing to 1:
 \code{env_lockfile}, \code{path_hygiene}, \code{entry_point}, \code{hidden_setup},
 \code{proprietary_pkgs}, \code{clean_run}, \code{script_depth},
-\code{output_reproduction}, \code{dual_verification}, \code{adrg}.}
+\code{output_reproduction}, \code{dual_verification}, \code{adrg},
+\code{windows_reviewability}, \code{compiled_toolchain}.}
 }
 }
 \description{

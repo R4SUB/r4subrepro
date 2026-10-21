@@ -17,7 +17,7 @@ test_that("summary scores a clean submission near the top", {
   ev  <- suppressMessages(assess_reproducibility(good))
   res <- reproducibility_summary(ev)
   expect_s3_class(res, "repro_result")
-  expect_equal(res$n_indicators, 10L)
+  expect_equal(res$n_indicators, 11L)
   expect_gte(res$overall_score, 0.9)
   expect_equal(res$n_fail, 0L)
 })
