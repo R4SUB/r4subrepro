@@ -2,7 +2,6 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^\.github$
-^\.claude$
 ^cran-comments\.md$
 ^_pkgdown\.yml$
 ^docs$

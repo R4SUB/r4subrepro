@@ -18,7 +18,7 @@ navbar:
       aria-label: GitHub
 
 home:
-  title: "r4subrepro — Reproducibility and Reviewability Indicators"
+  title: "r4subrepro: Reproducibility and Reviewability Indicators"
 
 reference:
   - title: "Configuration"
