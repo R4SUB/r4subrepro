@@ -1,3 +1,7 @@
+# r4subrepro 0.4.1
+
+- Add a pkgdown documentation site and prepare metadata for CRAN submission.
+
 # r4subrepro 0.4.0
 
 - Adds `assess_compiled_toolchain()` (`R-REPRO-012`), which detects whether the

@@ -1,0 +1,56 @@
+url: https://r4sub.github.io/r4subrepro/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  bslib:
+    primary: "#2C6DB5"
+
+navbar:
+  bg: light
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    github:
+      icon: fab fa-github
+      href: https://github.com/R4SUB/r4subrepro
+      aria-label: GitHub
+
+home:
+  title: "r4subrepro: Reproducibility and Reviewability Indicators"
+
+reference:
+  - title: "Configuration"
+    contents:
+      - repro_config_default
+  - title: "Assessment"
+    contents:
+      - assess_reproducibility
+      - reproducibility_summary
+  - title: "Indicators"
+    contents:
+      - assess_env_lockfile
+      - assess_path_hygiene
+      - assess_entry_point
+      - assess_hidden_setup
+      - assess_proprietary_pkgs
+      - assess_clean_run_evidence
+      - assess_script_depth
+      - assess_compiled_toolchain
+      - assess_dual_verification
+      - assess_output_reproduction
+      - assess_sas_r_concordance
+      - assess_windows_reviewability
+  - title: "ADRG"
+    contents:
+      - assess_adrg
+      - adrg_skeleton
+  - title: "Print Methods"
+    contents:
+      - print.repro_result
+
+footer:
+  structure:
+    left: developed_by
+    right: built_with
