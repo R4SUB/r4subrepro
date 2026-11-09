@@ -114,9 +114,9 @@ print.repro_result <- function(x, ...) {
   for (i in seq_len(nrow(x$summary))) {
     row <- x$summary[i, ]
     icon <- switch(row$result,
-                   pass = cli::col_green("u2713"),
+                   pass = cli::col_green(cli::symbol$tick),
                    warn = cli::col_yellow("!"),
-                   fail = cli::col_red("u2717"),
+                   fail = cli::col_red(cli::symbol$cross),
                    " ")
     cli::cli_text("{icon} {row$indicator_id} {row$indicator_name}: {row$result}")
   }
