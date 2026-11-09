@@ -1,5 +1,10 @@
 # r4subrepro (development version)
 
+- Add `path_hygiene_report()`, a descriptive companion to the path-hygiene
+  indicator (`R-REPRO-002`). It returns a tidy tibble naming every absolute or
+  non-portable path in the scripts, with its file, line number, category, and an
+  advisory suggested relative-path rewrite. It is advisory only and does not
+  change `assess_path_hygiene()` or any indicator score.
 - Add `repro_report()`, which renders the evidence from `assess_reproducibility()`
   and the scores from `reproducibility_summary()` into a machine-readable JSON
   string (or file) or a Markdown summary string. It is a reporting layer only and
