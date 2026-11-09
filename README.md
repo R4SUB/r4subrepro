@@ -61,6 +61,7 @@ res
 | `assess_reproducibility()` | Run the static indicators over a folder |
 | `assess_env_lockfile()` | Environment lockfile present (R-REPRO-001) |
 | `assess_path_hygiene()` | Absolute / OS-specific paths (R-REPRO-002) |
+| `path_hygiene_report()` | Line-by-line advisory report of non-portable paths with suggested relative rewrites |
 | `assess_entry_point()` | Single entry point (R-REPRO-003) |
 | `assess_hidden_setup()` | Hidden setup assumptions (R-REPRO-004) |
 | `assess_proprietary_pkgs()` | Package reproducibility tiering (R-REPRO-005) |
@@ -73,6 +74,7 @@ res
 | `assess_compiled_toolchain()` | Compiled-code toolchain documented (R-REPRO-012) |
 | `adrg_skeleton()` | Draft an ADRG from a static scan of the folder |
 | `reproducibility_summary()` | Weighted summary of the evidence |
+| `repro_report()` | Export the evidence and scores as a machine-readable JSON or Markdown report |
 | `repro_config_default()` | Default thresholds and weights |
 
 ## Maintained by
