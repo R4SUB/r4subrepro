@@ -1,5 +1,20 @@
 # Changelog
 
+## r4subrepro (development version)
+
+- Add a “Getting started” vignette walking through
+  [`assess_reproducibility()`](https://r4sub.github.io/r4subrepro/reference/assess_reproducibility.md),
+  [`reproducibility_summary()`](https://r4sub.github.io/r4subrepro/reference/reproducibility_summary.md),
+  the individual indicators,
+  [`repro_config_default()`](https://r4sub.github.io/r4subrepro/reference/repro_config_default.md),
+  and
+  [`adrg_skeleton()`](https://r4sub.github.io/r4subrepro/reference/adrg_skeleton.md)
+  on a self-contained example submission.
+- Fix the per-indicator status glyphs in
+  [`print.repro_result()`](https://r4sub.github.io/r4subrepro/reference/print.repro_result.md),
+  which displayed the literal text `u2713`/`u2717` instead of the
+  intended check and cross marks.
+
 ## r4subrepro 0.4.1
 
 - Add a pkgdown documentation site and prepare metadata for CRAN

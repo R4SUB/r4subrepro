@@ -71,16 +71,16 @@ print(res)
 #> Study: "sub_sum" | Indicators: 11
 #> 
 #> ! R-REPRO-001 Environment Lockfile Present: warn
-#> u2713 R-REPRO-002 Path Hygiene: pass
-#> u2713 R-REPRO-003 Single Entry Point: pass
-#> u2713 R-REPRO-004 Hidden Setup Assumptions: pass
-#> u2713 R-REPRO-005 Package Reproducibility Tiering: pass
+#> ✔ R-REPRO-002 Path Hygiene: pass
+#> ✔ R-REPRO-003 Single Entry Point: pass
+#> ✔ R-REPRO-004 Hidden Setup Assumptions: pass
+#> ✔ R-REPRO-005 Package Reproducibility Tiering: pass
 #> ! R-REPRO-006 Clean Run Evidence: warn
-#> u2713 R-REPRO-007 Script Complexity: pass
+#> ✔ R-REPRO-007 Script Complexity: pass
 #> ! R-REPRO-009 Dual Verification: warn
-#> u2717 R-REPRO-010 Analysis Data Reviewer's Guide: fail
-#> u2713 R-REPRO-011 Windows Reviewability: pass
-#> u2713 R-REPRO-012 Compiled-Code Toolchain: pass
+#> ✖ R-REPRO-010 Analysis Data Reviewer's Guide: fail
+#> ✔ R-REPRO-011 Windows Reviewability: pass
+#> ✔ R-REPRO-012 Compiled-Code Toolchain: pass
 #> 
 #> ℹ Overall reproducibility score: 76.1% (7 pass, 3 warn, 1 fail)
 ```

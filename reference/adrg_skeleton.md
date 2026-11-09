@@ -46,7 +46,7 @@ d <- file.path(tempdir(), "sub_adrg")
 dir.create(d, showWarnings = FALSE)
 writeLines("x <- read.csv('data/adsl.csv')", file.path(d, "run.R"))
 f <- adrg_skeleton(d)
-#> ✔ Wrote ADRG draft to /tmp/RtmpKRiTPf/sub_adrg/ADRG.md
+#> ✔ Wrote ADRG draft to /tmp/RtmpnyjuPn/sub_adrg/ADRG.md
 file.exists(f)
 #> [1] TRUE
 ```
