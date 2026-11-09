@@ -1,3 +1,11 @@
+# r4subrepro (development version)
+
+- Add a "Getting started" vignette walking through `assess_reproducibility()`,
+  `reproducibility_summary()`, the individual indicators, `repro_config_default()`,
+  and `adrg_skeleton()` on a self-contained example submission.
+- Fix the per-indicator status glyphs in `print.repro_result()`, which displayed
+  the literal text `u2713`/`u2717` instead of the intended check and cross marks.
+
 # r4subrepro 0.4.1
 
 - Add a pkgdown documentation site and prepare metadata for CRAN submission.
