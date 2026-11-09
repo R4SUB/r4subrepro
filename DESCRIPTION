@@ -20,6 +20,7 @@ Depends:
     R (>= 4.2)
 Imports:
     cli,
+    jsonlite,
     r4subcore,
     utils
 Suggests:
