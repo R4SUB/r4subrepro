@@ -1,5 +1,10 @@
 # r4subrepro (development version)
 
+- Add `repro_report()`, which renders the evidence from `assess_reproducibility()`
+  and the scores from `reproducibility_summary()` into a machine-readable JSON
+  string (or file) or a Markdown summary string. It is a reporting layer only and
+  does not change any indicator logic, thresholds, weights, or scores; the output
+  is marked as decision-support, not an official submission artifact.
 - Add a "Getting started" vignette walking through `assess_reproducibility()`,
   `reproducibility_summary()`, the individual indicators, `repro_config_default()`,
   and `adrg_skeleton()` on a self-contained example submission.

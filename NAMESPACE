@@ -17,6 +17,7 @@ export(assess_sas_r_concordance)
 export(assess_script_depth)
 export(assess_windows_reviewability)
 export(repro_config_default)
+export(repro_report)
 export(reproducibility_summary)
 importFrom(cli,
   cli_abort,
