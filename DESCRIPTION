@@ -22,6 +22,7 @@ Imports:
     cli,
     jsonlite,
     r4subcore,
+    tibble,
     utils
 Suggests:
     callr,

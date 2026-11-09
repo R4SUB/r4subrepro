@@ -43,6 +43,84 @@ read_lines_safe <- function(f) {
            error = function(e) character(0))
 }
 
+# Classify one string literal as a non-portable path, or NA when it is portable.
+# Mirrors the categories assess_path_hygiene() flags (Windows drive letters, UNC
+# shares, home-directory references, and absolute POSIX paths). Strings that look
+# like URLs are ignored so a scheme such as "https://" is not mistaken for a
+# drive letter.
+classify_nonportable_path <- function(s) {
+  if (!is.character(s) || length(s) != 1L || is.na(s) || !nzchar(s)) {
+    return(NA_character_)
+  }
+  if (grepl("://", s, fixed = TRUE)) return(NA_character_)
+  if (grepl("^[A-Za-z]:[\\\\/]", s, perl = TRUE)) return("windows_drive")
+  if (grepl("^\\\\\\\\", s, perl = TRUE))         return("unc_share")
+  if (grepl("^~", s))                             return("home_dir")
+  if (grepl("^/[A-Za-z_]", s, perl = TRUE))       return("posix_absolute")
+  NA_character_
+}
+
+# Advisory, deterministic relative-path rewrite for a non-portable path. Splits
+# on either separator, drops the non-portable prefix (drive letter, "~", leading
+# root), and keeps the tail from a recognised data/output anchor directory
+# onward, or the file name alone when no anchor is present. Descriptive only.
+suggest_relative_path <- function(p) {
+  if (!is.character(p) || length(p) != 1L || is.na(p) || !nzchar(p)) {
+    return(NA_character_)
+  }
+  parts <- strsplit(gsub("\\\\", "/", p), "/", fixed = FALSE)[[1]]
+  parts <- parts[nzchar(parts)]
+  parts <- parts[!grepl("^[A-Za-z]:$", parts)]   # drop "C:"
+  parts <- parts[parts != "~"]                   # drop home marker
+  if (!length(parts)) return(NA_character_)
+  anchors <- c("data", "datasets", "adam", "sdtm", "tdm", "programs", "program",
+               "outputs", "output", "raw", "derived", "analysis", "inst",
+               "tables", "figures", "listings", "tfl")
+  idx <- which(tolower(parts) %in% anchors)
+  if (length(idx)) {
+    paste(parts[idx[1L]:length(parts)], collapse = "/")
+  } else {
+    parts[length(parts)]
+  }
+}
+
+# Scan the R/Rmd scripts under a folder for non-portable path string literals,
+# returning a data.frame with one row per occurrence: file (relative, forward
+# slashes), line number, category, and the offending path text. Descriptive
+# helper for path_hygiene_report(); does not affect any indicator or score.
+scan_nonportable_paths <- function(path) {
+  files <- list_r_files(path)
+  rows  <- list()
+  for (f in files) {
+    lines <- read_lines_safe(f)
+    if (!length(lines)) next
+    rel <- sub(paste0("^\\Q", path, "\\E[\\\\/]?"), "", f, perl = TRUE)
+    rel <- gsub("\\\\", "/", rel)
+    for (i in seq_along(lines)) {
+      quoted <- regmatches(
+        lines[i],
+        gregexpr("[\"'][^\"']*[\"']", lines[i], perl = TRUE)
+      )[[1]]
+      if (!length(quoted)) next
+      for (q in quoted) {
+        content <- substr(q, 2L, nchar(q) - 1L)
+        type <- classify_nonportable_path(content)
+        if (!is.na(type)) {
+          rows[[length(rows) + 1L]] <- data.frame(
+            file = rel, line = i, type = type, path = content,
+            stringsAsFactors = FALSE)
+        }
+      }
+    }
+  }
+  if (!length(rows)) {
+    return(data.frame(file = character(0), line = integer(0),
+                      type = character(0), path = character(0),
+                      stringsAsFactors = FALSE))
+  }
+  do.call(rbind, rows)
+}
+
 # Coerce a data argument into a data.frame: pass a data.frame through, or read a
 # CSV path, or a SAS transport (.xpt) path when 'haven' is available.
 read_table_arg <- function(x, arg = "data") {

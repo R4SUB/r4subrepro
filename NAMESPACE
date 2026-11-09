@@ -16,16 +16,13 @@ export(assess_reproducibility)
 export(assess_sas_r_concordance)
 export(assess_script_depth)
 export(assess_windows_reviewability)
+export(path_hygiene_report)
 export(repro_config_default)
 export(repro_report)
 export(reproducibility_summary)
-importFrom(cli,
-  cli_abort,
-  cli_alert_info
-)
-importFrom(r4subcore,
-  as_evidence,
-  bind_evidence,
-  r4sub_run_context
-)
+importFrom(cli,cli_abort)
+importFrom(cli,cli_alert_info)
+importFrom(r4subcore,as_evidence)
+importFrom(r4subcore,bind_evidence)
+importFrom(r4subcore,r4sub_run_context)
 importFrom(utils,packageVersion)
