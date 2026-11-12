@@ -128,3 +128,150 @@ test_that("verify errors on an unusable manifest and manifest errors on a missin
   expect_error(repro_manifest_verify(d, file.path(tempdir(), "no_such_manifest.json")),
                "not found")
 })
+
+test_that("verify reports unchanged, modified, added, and removed together", {
+  d <- make_manifest_submission()
+  mf <- repro_manifest(d)                         # a.R, data/adsl.csv, run.R
+  writeLines("x <- 999", file.path(d, "a.R"))     # modify a.R
+  file.remove(file.path(d, "run.R"))              # remove run.R
+  writeLines("brand new", file.path(d, "new.R"))  # add new.R
+  # data/adsl.csv is left untouched -> unchanged
+
+  chk <- repro_manifest_verify(d, mf)
+  expect_false(chk$ok)
+  expect_equal(chk$n_total, 4L)
+  expect_equal(chk$n_unchanged, 1L)
+  expect_equal(chk$n_modified, 1L)
+  expect_equal(chk$n_added, 1L)
+  expect_equal(chk$n_removed, 1L)
+
+  st <- stats::setNames(chk$files$status, chk$files$file)
+  expect_equal(st[["a.R"]], "modified")
+  expect_equal(st[["run.R"]], "removed")
+  expect_equal(st[["new.R"]], "added")
+  expect_equal(st[["data/adsl.csv"]], "unchanged")
+
+  # A removed file keeps its expected hash but has no actual hash; an added file
+  # is the reverse.
+  expect_true(is.na(chk$files$actual_hash[chk$files$file == "run.R"]))
+  expect_true(is.na(chk$files$expected_hash[chk$files$file == "new.R"]))
+})
+
+test_that("exclude accepts multiple patterns and drops every match", {
+  d <- make_manifest_submission()
+  writeLines("log", file.path(d, "run.log"))
+  writeLines("tmp", file.path(d, "scratch.tmp"))
+  mf <- repro_manifest(d, exclude = c("\\.log$", "\\.tmp$"))
+  expect_false(any(grepl("\\.(log|tmp)$", mf$file)))
+  expect_setequal(mf$file, c("a.R", "data/adsl.csv", "run.R"))
+})
+
+test_that("nested subdirectories use normalized forward-slash relative paths", {
+  d <- make_manifest_submission()
+  dir.create(file.path(d, "data", "raw", "y2024"), recursive = TRUE,
+             showWarnings = FALSE)
+  writeLines("deep", file.path(d, "data", "raw", "y2024", "x.csv"))
+  mf <- repro_manifest(d)
+  expect_true("data/raw/y2024/x.csv" %in% mf$file)
+  expect_false(any(grepl("\\\\", mf$file)))  # no backslashes on any platform
+
+  # The deeply nested path round-trips through verification unchanged.
+  chk <- repro_manifest_verify(d, mf)
+  expect_true(chk$ok)
+  expect_equal(chk$files$status[chk$files$file == "data/raw/y2024/x.csv"],
+               "unchanged")
+})
+
+test_that("verify exclude ignores an added file that matches the pattern", {
+  d <- make_manifest_submission()
+  mf <- repro_manifest(d)
+  writeLines("log", file.path(d, "run.log"))
+  # Without exclude the stray log counts as an addition and ok is FALSE...
+  expect_false(repro_manifest_verify(d, mf)$ok)
+  # ...with the same exclude used at capture time it is ignored and ok is TRUE.
+  chk <- repro_manifest_verify(d, mf, exclude = "\\.log$")
+  expect_true(chk$ok)
+  expect_false("run.log" %in% chk$files$file)
+})
+
+test_that("a same-size content change is caught by the hash, not the size", {
+  d <- file.path(tempdir(), paste0("mf_sz_", as.integer(runif(1, 1, 1e6))))
+  dir.create(d, showWarnings = FALSE)
+  writeLines("AB", file.path(d, "f.txt"))
+  mf <- repro_manifest(d)
+  size_before <- mf$bytes[mf$file == "f.txt"]
+
+  writeLines("BA", file.path(d, "f.txt"))  # same byte length, different content
+  mf2 <- repro_manifest(d)
+  expect_equal(mf2$bytes[mf2$file == "f.txt"], size_before)   # size is identical
+  expect_false(identical(mf$hash[1], mf2$hash[1]))            # but the hash moved
+
+  chk <- repro_manifest_verify(d, mf)
+  expect_false(chk$ok)
+  expect_equal(chk$n_modified, 1L)
+  expect_equal(chk$files$status[chk$files$file == "f.txt"], "modified")
+})
+
+test_that("JSON manifests round-trip NA/null hashes without error", {
+  d <- make_manifest_submission()
+  f <- file.path(tempdir(), paste0("mf_na_", as.integer(runif(1, 1, 1e6)), ".json"))
+  # Hand-build a manifest document the way repro_manifest() writes it, with one
+  # file carrying an NA hash so the null round-trip is exercised end to end.
+  doc <- list(
+    manifest_type  = "r4subrepro file manifest",
+    schema_version = "1",
+    algo           = "md5",
+    files = list(
+      list(file = "a.R",   bytes = 10, hash = NA),
+      list(file = "run.R", bytes = 13, hash = "deadbeef")
+    )
+  )
+  json <- jsonlite::toJSON(doc, auto_unbox = TRUE, pretty = TRUE,
+                           null = "null", na = "null")
+  writeLines(as.character(json), f)
+
+  chk <- repro_manifest_verify(d, f)
+  expect_s3_class(chk, "repro_manifest_check")
+  # The null hash survives the round-trip as NA and does not error out.
+  expect_true(is.na(chk$files$expected_hash[chk$files$file == "a.R"]))
+  # NA expected vs. a real on-disk hash is a mismatch -> modified.
+  expect_equal(chk$files$status[chk$files$file == "a.R"], "modified")
+  # The stub hash never matches the real file -> modified.
+  expect_equal(chk$files$status[chk$files$file == "run.R"], "modified")
+  # A folder file absent from the manifest -> added.
+  expect_equal(chk$files$status[chk$files$file == "data/adsl.csv"], "added")
+})
+
+test_that("auto-exclude of an in-folder manifest fires for the JSON-path form only", {
+  d <- make_manifest_submission()
+  f <- file.path(d, "manifest.json")
+  suppressMessages(repro_manifest(d, file = f))
+
+  # JSON-path form: the manifest written into the folder is auto-excluded, so the
+  # folder verifies clean and the manifest file is not reported.
+  chk_path <- repro_manifest_verify(d, f)
+  expect_true(chk_path$ok)
+  expect_false("manifest.json" %in% chk_path$files$file)
+
+  # data.frame form: the same on-disk manifest.json is still in the folder, but a
+  # data-frame manifest carries no auto-exclude. Capturing the data frame while
+  # skipping the json keeps the three real files, and verification then reports
+  # the still-present manifest.json as an addition. This pins the documented gap:
+  # auto-exclude only applies to the JSON-path form, not the data.frame form.
+  df <- as.data.frame(repro_manifest(d, exclude = "^manifest\\.json$"))
+  chk_df <- repro_manifest_verify(d, df[, c("file", "hash")])
+  expect_false(chk_df$ok)
+  expect_true("manifest.json" %in% chk_df$files$file)
+  expect_equal(chk_df$files$status[chk_df$files$file == "manifest.json"], "added")
+})
+
+test_that("a manifest JSON outside the verified folder is not auto-excluded by path", {
+  d <- make_manifest_submission()
+  f <- file.path(tempdir(), paste0("outside_", as.integer(runif(1, 1, 1e6)), ".json"))
+  suppressMessages(repro_manifest(d, file = f))
+  # The manifest lives outside the folder, so nothing in the folder matches the
+  # auto-exclude path and the three real files still verify clean.
+  chk <- repro_manifest_verify(d, f)
+  expect_true(chk$ok)
+  expect_equal(chk$n_unchanged, 3L)
+})
