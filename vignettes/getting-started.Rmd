@@ -155,6 +155,46 @@ basename(guide)
 Once you have filled in the draft, `assess_adrg()` checks that the guide covers
 every required section.
 
+## Capturing and verifying a file manifest
+
+`repro_manifest()` records an integrity manifest of every file in the folder,
+its relative path, size, and MD5 hash, so a reviewer can confirm the files they
+received are exactly the files the sponsor hashed.
+
+```{r manifest}
+mf <- repro_manifest(sub)
+mf
+```
+
+Write it alongside the submission as portable JSON:
+
+```{r manifest-write}
+manifest_file <- repro_manifest(sub, file = file.path(sub, "manifest.json"))
+basename(manifest_file)
+```
+
+`repro_manifest_verify()` re-hashes the folder and reports whether anything has
+changed since the manifest was captured. An unchanged folder verifies clean (a
+manifest written into the folder is excluded from its own verification
+automatically).
+
+```{r manifest-verify}
+repro_manifest_verify(sub, manifest_file)
+```
+
+If a file is modified, added, or removed, the check reports it and `ok` becomes
+`FALSE`:
+
+```{r manifest-diff}
+writeLines("result <- adsl  # edited", file.path(sub, "analysis.R"))
+chk <- repro_manifest_verify(sub, manifest_file)
+chk$ok
+chk$files[chk$files$status != "unchanged", ]
+```
+
+This is an integrity helper, not an indicator: it emits no R4SUB evidence and
+does not change any indicator score.
+
 ```{r cleanup, include = FALSE}
 unlink(sub, recursive = TRUE)
 unlink(file.path(tempdir(), "ADRG.md"))

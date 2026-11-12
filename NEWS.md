@@ -1,5 +1,14 @@
 # r4subrepro (development version)
 
+- Add `repro_manifest()` and `repro_manifest_verify()`, a file-hash integrity
+  manifest for a submission. `repro_manifest()` records every file's relative
+  path, size, and MD5 hash as a tidy tibble or a portable JSON manifest;
+  `repro_manifest_verify()` re-hashes the folder and reports which files are
+  unchanged, modified, added, or removed, returning a `repro_manifest_check`
+  object with a print method. This lets a reviewer confirm the files received
+  match what the sponsor recorded, and a reproduction run confirm the inputs
+  were not altered. It is an integrity helper only: it emits no R4SUB evidence
+  and does not change any indicator logic, threshold, weight, or score.
 - Add `path_hygiene_report()`, a descriptive companion to the path-hygiene
   indicator (`R-REPRO-002`). It returns a tidy tibble naming every absolute or
   non-portable path in the scripts, with its file, line number, category, and an
