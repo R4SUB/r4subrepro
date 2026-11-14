@@ -75,6 +75,8 @@ res
 | `adrg_skeleton()` | Draft an ADRG from a static scan of the folder |
 | `reproducibility_summary()` | Weighted summary of the evidence |
 | `repro_report()` | Export the evidence and scores as a machine-readable JSON or Markdown report |
+| `repro_manifest()` | Capture a file-hash (MD5) integrity manifest of the folder, as a tibble or JSON |
+| `repro_manifest_verify()` | Re-hash the folder and report files unchanged / modified / added / removed vs a manifest |
 | `repro_config_default()` | Default thresholds and weights |
 
 ## Maintained by
