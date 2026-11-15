@@ -1,5 +1,18 @@
 # r4subrepro (development version)
 
+- Add `capture_environment()` and `compare_environments()`, a computational
+  environment snapshot and comparator. `capture_environment()` records the
+  running session's R version, platform, operating system, locale, and
+  attached/loaded package names and versions (read from `utils::sessionInfo()`)
+  into a structured `repro_environment` object or a portable JSON snapshot;
+  `compare_environments()` diffs two snapshots and reports the R version change
+  and which packages were added, removed, or changed version, as a
+  `repro_environment_diff` object with a print method. This complements the
+  file-hash manifest, which tracks the data and output files, by tracking the
+  software environment that produced them. Capture is robust when optional
+  session fields are absent. It is a descriptive/integrity helper only: it emits
+  no R4SUB evidence and does not change any indicator logic, threshold, weight,
+  or score.
 - Add `repro_manifest()` and `repro_manifest_verify()`, a file-hash integrity
   manifest for a submission. `repro_manifest()` records every file's relative
   path, size, and MD5 hash as a tidy tibble or a portable JSON manifest;

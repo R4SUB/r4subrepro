@@ -28,6 +28,8 @@ reference:
     contents:
       - assess_reproducibility
       - reproducibility_summary
+      - repro_report
+      - path_hygiene_report
   - title: "Indicators"
     contents:
       - assess_env_lockfile
@@ -49,6 +51,15 @@ reference:
   - title: "Print Methods"
     contents:
       - print.repro_result
+      - print.repro_manifest_check
+      - print.repro_environment
+      - print.repro_environment_diff
+  - title: "Manifest & Environment"
+    contents:
+      - repro_manifest
+      - repro_manifest_verify
+      - capture_environment
+      - compare_environments
 
 footer:
   structure:
