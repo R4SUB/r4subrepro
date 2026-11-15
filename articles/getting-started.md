@@ -76,7 +76,7 @@ evidence table.
 ``` r
 
 ev <- assess_reproducibility(sub)
-#> ℹ Run context created: "R4S-20261109181121-wl4dieex"
+#> ℹ Run context created: "R4S-20261115073032-wl4dieex"
 #> ✔ Evidence table created: 1 row
 #> ✔ Evidence table created: 1 row
 #> ✔ Evidence table created: 1 row
@@ -169,7 +169,7 @@ lockfile:
 ``` r
 
 lock <- assess_env_lockfile(sub)
-#> ℹ Run context created: "R4S-20261109181122-ombeu7fd"
+#> ℹ Run context created: "R4S-20261115073032-ombeu7fd"
 #> ✔ Evidence table created: 1 row
 lock[, c("indicator_id", "result", "message")]
 #>   indicator_id result                                  message
@@ -218,7 +218,7 @@ sponsor to complete.
 ``` r
 
 guide <- adrg_skeleton(sub, out = file.path(tempdir(), "ADRG.md"))
-#> ✔ Wrote ADRG draft to /tmp/RtmpKkEfVi/ADRG.md
+#> ✔ Wrote ADRG draft to /tmp/RtmprUOytJ/ADRG.md
 basename(guide)
 #> [1] "ADRG.md"
 ```
@@ -226,3 +226,69 @@ basename(guide)
 Once you have filled in the draft,
 [`assess_adrg()`](https://r4sub.github.io/r4subrepro/reference/assess_adrg.md)
 checks that the guide covers every required section.
+
+## Capturing and verifying a file manifest
+
+[`repro_manifest()`](https://r4sub.github.io/r4subrepro/reference/repro_manifest.md)
+records an integrity manifest of every file in the folder, its relative
+path, size, and MD5 hash, so a reviewer can confirm the files they
+received are exactly the files the sponsor hashed.
+
+``` r
+
+mf <- repro_manifest(sub)
+mf
+#> # A tibble: 5 × 4
+#>   file            bytes algo  hash                            
+#>   <chr>           <dbl> <chr> <chr>                           
+#> 1 analysis.R         51 md5   ca3fd6ae96281a81622efaa99753734d
+#> 2 load.R             49 md5   8cf8d4a0722b532a7dc6151524428c61
+#> 3 renv.lock         103 md5   790b886a3d608e5abc7c529e73b70abc
+#> 4 run.R              38 md5   2109109e338c41eee788fab2194f0482
+#> 5 sessionInfo.txt    41 md5   9995802df874b1a44cf4d346de2e3892
+```
+
+Write it alongside the submission as portable JSON:
+
+``` r
+
+manifest_file <- repro_manifest(sub, file = file.path(sub, "manifest.json"))
+#> ✔ Wrote file manifest (5 files) to /tmp/RtmprUOytJ/demo_submission/manifest.json
+basename(manifest_file)
+#> [1] "manifest.json"
+```
+
+[`repro_manifest_verify()`](https://r4sub.github.io/r4subrepro/reference/repro_manifest_verify.md)
+re-hashes the folder and reports whether anything has changed since the
+manifest was captured. An unchanged folder verifies clean (a manifest
+written into the folder is excluded from its own verification
+automatically).
+
+``` r
+
+repro_manifest_verify(sub, manifest_file)
+#> 
+#> ── R4SUB File Manifest Verification ──
+#> 
+#> Files checked: 5 | Algorithm: "md5"
+#> ✔ All 5 files match the manifest; nothing modified, added, or removed.
+```
+
+If a file is modified, added, or removed, the check reports it and `ok`
+becomes `FALSE`:
+
+``` r
+
+writeLines("result <- adsl  # edited", file.path(sub, "analysis.R"))
+chk <- repro_manifest_verify(sub, manifest_file)
+chk$ok
+#> [1] FALSE
+chk$files[chk$files$status != "unchanged", ]
+#> # A tibble: 1 × 4
+#>   file       status   expected_hash                    actual_hash              
+#>   <chr>      <chr>    <chr>                            <chr>                    
+#> 1 analysis.R modified ca3fd6ae96281a81622efaa99753734d 853d4cba5a0be39b7e11b242…
+```
+
+This is an integrity helper, not an indicator: it emits no R4SUB
+evidence and does not change any indicator score.

@@ -67,6 +67,7 @@ res
 | [`assess_reproducibility()`](https://r4sub.github.io/r4subrepro/reference/assess_reproducibility.md) | Run the static indicators over a folder |
 | [`assess_env_lockfile()`](https://r4sub.github.io/r4subrepro/reference/assess_env_lockfile.md) | Environment lockfile present (R-REPRO-001) |
 | [`assess_path_hygiene()`](https://r4sub.github.io/r4subrepro/reference/assess_path_hygiene.md) | Absolute / OS-specific paths (R-REPRO-002) |
+| [`path_hygiene_report()`](https://r4sub.github.io/r4subrepro/reference/path_hygiene_report.md) | Line-by-line advisory report of non-portable paths with suggested relative rewrites |
 | [`assess_entry_point()`](https://r4sub.github.io/r4subrepro/reference/assess_entry_point.md) | Single entry point (R-REPRO-003) |
 | [`assess_hidden_setup()`](https://r4sub.github.io/r4subrepro/reference/assess_hidden_setup.md) | Hidden setup assumptions (R-REPRO-004) |
 | [`assess_proprietary_pkgs()`](https://r4sub.github.io/r4subrepro/reference/assess_proprietary_pkgs.md) | Package reproducibility tiering (R-REPRO-005) |
@@ -79,6 +80,9 @@ res
 | [`assess_compiled_toolchain()`](https://r4sub.github.io/r4subrepro/reference/assess_compiled_toolchain.md) | Compiled-code toolchain documented (R-REPRO-012) |
 | [`adrg_skeleton()`](https://r4sub.github.io/r4subrepro/reference/adrg_skeleton.md) | Draft an ADRG from a static scan of the folder |
 | [`reproducibility_summary()`](https://r4sub.github.io/r4subrepro/reference/reproducibility_summary.md) | Weighted summary of the evidence |
+| [`repro_report()`](https://r4sub.github.io/r4subrepro/reference/repro_report.md) | Export the evidence and scores as a machine-readable JSON or Markdown report |
+| [`repro_manifest()`](https://r4sub.github.io/r4subrepro/reference/repro_manifest.md) | Capture a file-hash (MD5) integrity manifest of the folder, as a tibble or JSON |
+| [`repro_manifest_verify()`](https://r4sub.github.io/r4subrepro/reference/repro_manifest_verify.md) | Re-hash the folder and report files unchanged / modified / added / removed vs a manifest |
 | [`repro_config_default()`](https://r4sub.github.io/r4subrepro/reference/repro_config_default.md) | Default thresholds and weights |
 
 ## Maintained by

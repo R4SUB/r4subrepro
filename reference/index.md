@@ -11,6 +11,10 @@
   : Assess Reproducibility of a Submission Folder
 - [`reproducibility_summary()`](https://r4sub.github.io/r4subrepro/reference/reproducibility_summary.md)
   : Summarise Reproducibility Evidence
+- [`repro_report()`](https://r4sub.github.io/r4subrepro/reference/repro_report.md)
+  : Export a Machine-Readable Reproducibility Report
+- [`path_hygiene_report()`](https://r4sub.github.io/r4subrepro/reference/path_hygiene_report.md)
+  : Detailed Path-Hygiene Report
 
 ## Indicators
 
@@ -50,3 +54,20 @@
 
 - [`print(`*`<repro_result>`*`)`](https://r4sub.github.io/r4subrepro/reference/print.repro_result.md)
   : Print a Reproducibility Result Summary
+- [`print(`*`<repro_manifest_check>`*`)`](https://r4sub.github.io/r4subrepro/reference/print.repro_manifest_check.md)
+  : Print a File-Hash Manifest Verification
+- [`print(`*`<repro_environment>`*`)`](https://r4sub.github.io/r4subrepro/reference/print.repro_environment.md)
+  : Print a Computational Environment Snapshot
+- [`print(`*`<repro_environment_diff>`*`)`](https://r4sub.github.io/r4subrepro/reference/print.repro_environment_diff.md)
+  : Print a Computational Environment Comparison
+
+## Manifest & Environment
+
+- [`repro_manifest()`](https://r4sub.github.io/r4subrepro/reference/repro_manifest.md)
+  : Capture a File-Hash Manifest of a Submission
+- [`repro_manifest_verify()`](https://r4sub.github.io/r4subrepro/reference/repro_manifest_verify.md)
+  : Verify a Submission Against a File-Hash Manifest
+- [`capture_environment()`](https://r4sub.github.io/r4subrepro/reference/capture_environment.md)
+  : Capture the Computational Environment of a Session
+- [`compare_environments()`](https://r4sub.github.io/r4subrepro/reference/compare_environments.md)
+  : Compare Two Computational Environment Snapshots

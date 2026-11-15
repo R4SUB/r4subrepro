@@ -133,7 +133,7 @@ analysis folder you are preparing for the agency.</p>
 the folder and returns a combined evidence table.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/assess_reproducibility.html">assess_reproducibility</a></span><span class="op">(</span><span class="va">sub</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Run context created: <span style="color: #0000BB;">"R4S-20261109181121-wl4dieex"</span></span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Run context created: <span style="color: #0000BB;">"R4S-20261115073032-wl4dieex"</span></span></span>
 <span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> Evidence table created: 1 row</span></span>
 <span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> Evidence table created: 1 row</span></span>
 <span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> Evidence table created: 1 row</span></span>
@@ -217,7 +217,7 @@ want to focus on one aspect. For example, to check only the environment
 lockfile:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lock</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/assess_env_lockfile.html">assess_env_lockfile</a></span><span class="op">(</span><span class="va">sub</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Run context created: <span style="color: #0000BB;">"R4S-20261109181122-ombeu7fd"</span></span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Run context created: <span style="color: #0000BB;">"R4S-20261115073032-ombeu7fd"</span></span></span>
 <span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> Evidence table created: 1 row</span></span>
 <span><span class="va">lock</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"indicator_id"</span>, <span class="st">"result"</span>, <span class="st">"message"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;   indicator_id result                                  message</span></span>
@@ -256,11 +256,61 @@ from a static scan of the folder. Lines that need human judgement are
 marked <code>TODO</code> for the sponsor to complete.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">guide</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/adrg_skeleton.html">adrg_skeleton</a></span><span class="op">(</span><span class="va">sub</span>, out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"ADRG.md"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> Wrote ADRG draft to <span style="color: #0000BB;">/tmp/RtmpKkEfVi/ADRG.md</span></span></span>
+<span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> Wrote ADRG draft to <span style="color: #0000BB;">/tmp/RtmprUOytJ/ADRG.md</span></span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">basename</a></span><span class="op">(</span><span class="va">guide</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "ADRG.md"</span></span></code></pre></div>
 <p>Once you have filled in the draft, <code><a href="../reference/assess_adrg.html">assess_adrg()</a></code> checks
 that the guide covers every required section.</p>
+</div>
+<div class="section level2">
+<h2 id="capturing-and-verifying-a-file-manifest">Capturing and verifying a file manifest<a class="anchor" aria-label="anchor" href="#capturing-and-verifying-a-file-manifest"></a>
+</h2>
+<p><code><a href="../reference/repro_manifest.html">repro_manifest()</a></code> records an integrity manifest of every
+file in the folder, its relative path, size, and MD5 hash, so a reviewer
+can confirm the files they received are exactly the files the sponsor
+hashed.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/repro_manifest.html">repro_manifest</a></span><span class="op">(</span><span class="va">sub</span><span class="op">)</span></span>
+<span><span class="va">mf</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 5 × 4</span></span></span>
+<span><span class="co">#&gt;   file            bytes algo  hash                            </span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> analysis.R         51 md5   ca3fd6ae96281a81622efaa99753734d</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> load.R             49 md5   8cf8d4a0722b532a7dc6151524428c61</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> renv.lock         103 md5   790b886a3d608e5abc7c529e73b70abc</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> run.R              38 md5   2109109e338c41eee788fab2194f0482</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> sessionInfo.txt    41 md5   9995802df874b1a44cf4d346de2e3892</span></span></code></pre></div>
+<p>Write it alongside the submission as portable JSON:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">manifest_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/repro_manifest.html">repro_manifest</a></span><span class="op">(</span><span class="va">sub</span>, file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">sub</span>, <span class="st">"manifest.json"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> Wrote file manifest (5 files) to <span style="color: #0000BB;">/tmp/RtmprUOytJ/demo_submission/manifest.json</span></span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">basename</a></span><span class="op">(</span><span class="va">manifest_file</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "manifest.json"</span></span></code></pre></div>
+<p><code><a href="../reference/repro_manifest_verify.html">repro_manifest_verify()</a></code> re-hashes the folder and reports
+whether anything has changed since the manifest was captured. An
+unchanged folder verifies clean (a manifest written into the folder is
+excluded from its own verification automatically).</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/repro_manifest_verify.html">repro_manifest_verify</a></span><span class="op">(</span><span class="va">sub</span>, <span class="va">manifest_file</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; ── <span style="font-weight: bold;">R4SUB File Manifest Verification</span> ──</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Files checked: <span style="color: #0000BB;">5</span> | Algorithm: <span style="color: #0000BB;">"md5"</span></span></span>
+<span><span class="co">#&gt; <span style="color: #00BB00;">✔</span> All 5 files match the manifest; nothing modified, added, or removed.</span></span></code></pre></div>
+<p>If a file is modified, added, or removed, the check reports it and
+<code>ok</code> becomes <code>FALSE</code>:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="st">"result &lt;- adsl  # edited"</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">sub</span>, <span class="st">"analysis.R"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">chk</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/repro_manifest_verify.html">repro_manifest_verify</a></span><span class="op">(</span><span class="va">sub</span>, <span class="va">manifest_file</span><span class="op">)</span></span>
+<span><span class="va">chk</span><span class="op">$</span><span class="va">ok</span></span>
+<span><span class="co">#&gt; [1] FALSE</span></span>
+<span><span class="va">chk</span><span class="op">$</span><span class="va">files</span><span class="op">[</span><span class="va">chk</span><span class="op">$</span><span class="va">files</span><span class="op">$</span><span class="va">status</span> <span class="op">!=</span> <span class="st">"unchanged"</span>, <span class="op">]</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 4</span></span></span>
+<span><span class="co">#&gt;   file       status   expected_hash                    actual_hash              </span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                            <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                    </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> analysis.R modified ca3fd6ae96281a81622efaa99753734d 853d4cba5a0be39b7e11b242…</span></span></code></pre></div>
+<p>This is an integrity helper, not an indicator: it emits no R4SUB
+evidence and does not change any indicator score.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

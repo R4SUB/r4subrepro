@@ -2,6 +2,61 @@
 
 ## r4subrepro (development version)
 
+- Add
+  [`capture_environment()`](https://r4sub.github.io/r4subrepro/reference/capture_environment.md)
+  and
+  [`compare_environments()`](https://r4sub.github.io/r4subrepro/reference/compare_environments.md),
+  a computational environment snapshot and comparator.
+  [`capture_environment()`](https://r4sub.github.io/r4subrepro/reference/capture_environment.md)
+  records the running session’s R version, platform, operating system,
+  locale, and attached/loaded package names and versions (read from
+  [`utils::sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html))
+  into a structured `repro_environment` object or a portable JSON
+  snapshot;
+  [`compare_environments()`](https://r4sub.github.io/r4subrepro/reference/compare_environments.md)
+  diffs two snapshots and reports the R version change and which
+  packages were added, removed, or changed version, as a
+  `repro_environment_diff` object with a print method. This complements
+  the file-hash manifest, which tracks the data and output files, by
+  tracking the software environment that produced them. Capture is
+  robust when optional session fields are absent. It is a
+  descriptive/integrity helper only: it emits no R4SUB evidence and does
+  not change any indicator logic, threshold, weight, or score.
+- Add
+  [`repro_manifest()`](https://r4sub.github.io/r4subrepro/reference/repro_manifest.md)
+  and
+  [`repro_manifest_verify()`](https://r4sub.github.io/r4subrepro/reference/repro_manifest_verify.md),
+  a file-hash integrity manifest for a submission.
+  [`repro_manifest()`](https://r4sub.github.io/r4subrepro/reference/repro_manifest.md)
+  records every file’s relative path, size, and MD5 hash as a tidy
+  tibble or a portable JSON manifest;
+  [`repro_manifest_verify()`](https://r4sub.github.io/r4subrepro/reference/repro_manifest_verify.md)
+  re-hashes the folder and reports which files are unchanged, modified,
+  added, or removed, returning a `repro_manifest_check` object with a
+  print method. This lets a reviewer confirm the files received match
+  what the sponsor recorded, and a reproduction run confirm the inputs
+  were not altered. It is an integrity helper only: it emits no R4SUB
+  evidence and does not change any indicator logic, threshold, weight,
+  or score.
+- Add
+  [`path_hygiene_report()`](https://r4sub.github.io/r4subrepro/reference/path_hygiene_report.md),
+  a descriptive companion to the path-hygiene indicator (`R-REPRO-002`).
+  It returns a tidy tibble naming every absolute or non-portable path in
+  the scripts, with its file, line number, category, and an advisory
+  suggested relative-path rewrite. It is advisory only and does not
+  change
+  [`assess_path_hygiene()`](https://r4sub.github.io/r4subrepro/reference/assess_path_hygiene.md)
+  or any indicator score.
+- Add
+  [`repro_report()`](https://r4sub.github.io/r4subrepro/reference/repro_report.md),
+  which renders the evidence from
+  [`assess_reproducibility()`](https://r4sub.github.io/r4subrepro/reference/assess_reproducibility.md)
+  and the scores from
+  [`reproducibility_summary()`](https://r4sub.github.io/r4subrepro/reference/reproducibility_summary.md)
+  into a machine-readable JSON string (or file) or a Markdown summary
+  string. It is a reporting layer only and does not change any indicator
+  logic, thresholds, weights, or scores; the output is marked as
+  decision-support, not an official submission artifact.
 - Add a “Getting started” vignette walking through
   [`assess_reproducibility()`](https://r4sub.github.io/r4subrepro/reference/assess_reproducibility.md),
   [`reproducibility_summary()`](https://r4sub.github.io/r4subrepro/reference/reproducibility_summary.md),

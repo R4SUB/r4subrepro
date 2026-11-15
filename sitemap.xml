@@ -21,10 +21,19 @@
 <url><loc>https://r4sub.github.io/r4subrepro/reference/assess_sas_r_concordance.html</loc></url>
 <url><loc>https://r4sub.github.io/r4subrepro/reference/assess_script_depth.html</loc></url>
 <url><loc>https://r4sub.github.io/r4subrepro/reference/assess_windows_reviewability.html</loc></url>
+<url><loc>https://r4sub.github.io/r4subrepro/reference/capture_environment.html</loc></url>
+<url><loc>https://r4sub.github.io/r4subrepro/reference/compare_environments.html</loc></url>
 <url><loc>https://r4sub.github.io/r4subrepro/reference/index.html</loc></url>
+<url><loc>https://r4sub.github.io/r4subrepro/reference/path_hygiene_report.html</loc></url>
+<url><loc>https://r4sub.github.io/r4subrepro/reference/print.repro_environment.html</loc></url>
+<url><loc>https://r4sub.github.io/r4subrepro/reference/print.repro_environment_diff.html</loc></url>
+<url><loc>https://r4sub.github.io/r4subrepro/reference/print.repro_manifest_check.html</loc></url>
 <url><loc>https://r4sub.github.io/r4subrepro/reference/print.repro_result.html</loc></url>
 <url><loc>https://r4sub.github.io/r4subrepro/reference/r4subrepro-package.html</loc></url>
 <url><loc>https://r4sub.github.io/r4subrepro/reference/repro_config_default.html</loc></url>
+<url><loc>https://r4sub.github.io/r4subrepro/reference/repro_manifest.html</loc></url>
+<url><loc>https://r4sub.github.io/r4subrepro/reference/repro_manifest_verify.html</loc></url>
+<url><loc>https://r4sub.github.io/r4subrepro/reference/repro_report.html</loc></url>
 <url><loc>https://r4sub.github.io/r4subrepro/reference/reproducibility_summary.html</loc></url>
 </urlset>
 
